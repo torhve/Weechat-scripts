@@ -88,10 +88,11 @@ def urlbar_item_cb(data, item, window):
     if not urls:
         return 'Empty URL list'
 
-    printlist = urls[-visible_amount:]
     if DISPLAY_ALL:
         DISPLAY_ALL = False
         printlist = urls
+    else:
+        printlist = urls[-visible_amount:]
 
     result = ''
     for index, url in enumerate(printlist):
@@ -113,7 +114,9 @@ class URL(object):
         self.url = url
         self.buffername = buffername
         self.time = strftime(weechat.config_get_plugin('time_format'), localtime(int(timestamp)))
-        self.nick = nick
+        self.time = self.time.replace(':', '%s:%s' %(weechat.color(weechat.config_string(weechat.config_get('weechat.color.chat_time_delimiters'))), weechat.color('reset')))
+        self.nick = irc_nick_find_color(nick)
+        #self.nick = nick
 
     def __str__(self):
         # Format options
@@ -196,6 +199,18 @@ def urlbar_completion_urls_cb(data, completion_item, buffer, completion):
         weechat.hook_completion_list_add(completion, url.url,
                                          0, weechat.WEECHAT_LIST_POS_SORT)
     return weechat.WEECHAT_RC_OK
+
+def irc_nick_find_color(nick):
+
+    color = 0
+    for char in nick:
+        color += ord(char)
+
+    color %= weechat.config_integer(weechat.config_get("weechat.look.color_nicks_number"))
+    color = weechat.config_get('weechat.color.chat_nick_color%02d' %(color+1))
+    color = weechat.config_string(color)
+    return '%s%s%s' %(weechat.color(color), nick, weechat.color('reset'))
+
 
 if __name__ == "__main__" and import_ok:
     if weechat.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
