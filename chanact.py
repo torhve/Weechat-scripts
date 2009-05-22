@@ -90,8 +90,8 @@ def chanact_cb(*kwargs):
                 continue
             key = key.replace('meta-', '')
 # skip entries where buffer number = key, typically entries below 11
-#            if key.isdigit():
-#                continue
+            if key.isdigit():
+                continue
             command = w.infolist_string(keylist, 'command')
 # we only care about commands that leads to buffers
             if command.startswith('/buffer'):
