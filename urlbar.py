@@ -21,6 +21,8 @@
 # (this script requires WeeChat 0.3.0 or newer)
 #
 # History:
+# 2005-05-22, xt <xt@bash.no>
+#     version 0.4: added configurable showing of buffer name, nick and time
 # 2009-05-21, xt <xt@bash.no>
 #     version 0.3: bug fixes, add ignore feature from sleo
 # 2009-05-19, xt <xt@bash.no>:
@@ -31,7 +33,7 @@
 
 SCRIPT_NAME    = "urlbar"
 SCRIPT_AUTHOR  = "FlashCode <flashcode@flashtux.org>"
-SCRIPT_VERSION = "0.2-dev"
+SCRIPT_VERSION = "0.4"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Bar with URLs. For easy clicking or selecting."
 
@@ -43,6 +45,10 @@ settings = {
     "use_popup"             : 'on', # Pop up automatically
     "remember_amount"       : '25', # Max amout of URLs to keep in RAM
     "ignore"                : '',   # List of buffers to ignore. (Space separated)
+    "show_timestamp"        : 'on', # Show timestamp in list
+    "show_nick"             : 'on', # Show nick in list
+    "show_buffername"       : 'on', # Show buffer name in list
+    "time_format"           : '%H:%M', # Time format
 }
 
 import_ok = True
@@ -54,6 +60,7 @@ except ImportError:
     import_ok = False
 
 import re
+from time import strftime, localtime
 octet = r'(?:2(?:[0-4]\d|5[0-5])|1\d\d|\d{1,2})'
 ipAddr = r'%s(?:\.%s){3}' % (octet, octet)
 # Base domain regex off RFC 1034 and 1738
@@ -71,6 +78,7 @@ DISPLAY_ALL = False
 
 
 def urlbar_item_cb(data, item, window):
+    ''' Callback that prints the lines in the urlbar '''
     global DISPLAY_ALL, urls
     try:
         visible_amount = int(weechat.config_get_plugin('visible_amount'))
@@ -101,13 +109,23 @@ def get_buffer_name(bufferp, long=False):
 class URL(object):
     ''' URL class that holds the urls in the URL list '''
 
-    def __init__(self, url, buffername, timestamp):
+    def __init__(self, url, buffername, timestamp, nick):
         self.url = url
         self.buffername = buffername
-        self.timestamp = timestamp
+        self.time = strftime(weechat.config_get_plugin('time_format'), localtime(int(timestamp)))
+        self.nick = nick
 
     def __str__(self):
-        return '%s %s' % (self.buffername, self.url)
+        # Format options
+        time, buffername, nick = '', '', ''
+        if weechat.config_get_plugin('show_timestamp') == 'on':
+            time = self.time + ' '
+        if weechat.config_get_plugin('show_buffername') == 'on':
+            buffername = self.buffername + ' '
+        if weechat.config_get_plugin('show_nick') == 'on':
+            nick = self.nick + ' '
+
+        return '%s%s%s%s' % (time, nick, buffername, self.url)
 
     def __cmp__(this, other):
         if this.url == other.url:
@@ -129,7 +147,7 @@ def urlbar_print_cb(data, buffer, time, tags, displayed, highlight, prefix, mess
         urls.pop(0)
 
     for url in urlRe.findall(message):
-        urlobject = URL(url, get_buffer_name(buffer), time)
+        urlobject = URL(url, get_buffer_name(buffer), time, prefix)
         # Do not add duplicate URLs
         if urlobject in urls:
             continue
