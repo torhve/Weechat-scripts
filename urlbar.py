@@ -21,9 +21,10 @@
 # (this script requires WeeChat 0.3.0 or newer)
 #
 # History:
-#
+# 2009-05-21, xt <xt@bash.no>
+#     version 0.3: bug fixes, add ignore feature from sleo
 # 2009-05-19, xt <xt@bash.no>:
-#     version 0.2-dev: dev snapshot
+#     version 0.2-dev: fixes
 # 2009-05-04, FlashCode <flashcode@flashtux.org>:
 #     version 0.1-dev: dev snapshot
 #
@@ -70,7 +71,7 @@ DISPLAY_ALL = False
 
 
 def urlbar_item_cb(data, item, window):
-    global DISPLAY_ALL
+    global DISPLAY_ALL, urls
     try:
         visible_amount = int(weechat.config_get_plugin('visible_amount'))
     except ValueError:
@@ -98,6 +99,7 @@ def get_buffer_name(bufferp, long=False):
     return bufferd
 
 class URL(object):
+    ''' URL class that holds the urls in the URL list '''
 
     def __init__(self, url, buffername, timestamp):
         self.url = url
@@ -127,7 +129,7 @@ def urlbar_print_cb(data, buffer, time, tags, displayed, highlight, prefix, mess
         urls.pop(0)
 
     for url in urlRe.findall(message):
-        urlobject = URL(url, buffer_name, time)
+        urlobject = URL(url, get_buffer_name(buffer), time)
         # Do not add duplicate URLs
         if urlobject in urls:
             continue
@@ -148,12 +150,9 @@ def urlbar_print_cb(data, buffer, time, tags, displayed, highlight, prefix, mess
 
 def urlbar_cmd(data, buffer, args):
     """ Callback for /url command. """
-    if args == "":
-        weechat.command("", "/help %s" % SCRIPT_COMMAND)
-        return weechat.WEECHAT_RC_OK
+    global urls
+
     if args == "list":
-        # list
-        #url_list()
         if urls:
             weechat.command("", "/bar show urlbar")
         else:
@@ -163,16 +162,20 @@ def urlbar_cmd(data, buffer, args):
     elif args == 'toggle':
         weechat.command("", "/bar toggle urlbar")
     elif args == 'all':
+        global DISPLAY_ALL
         DISPLAY_ALL = True
         weechat.command("", '/bar toggle urlbar')
     elif args == 'clear':
         urls = []
+    else:
+        weechat.command("", "/help %s" % SCRIPT_COMMAND)
+
     return weechat.WEECHAT_RC_OK
 
 def urlbar_completion_urls_cb(data, completion_item, buffer, completion):
     """ Complete with URLS, for command '/url'. """
     for url in urls:
-        weechat.hook_completion_list_add(completion, url,
+        weechat.hook_completion_list_add(completion, url.url,
                                          0, weechat.WEECHAT_LIST_POS_SORT)
     return weechat.WEECHAT_RC_OK
 
@@ -186,7 +189,7 @@ if __name__ == "__main__" and import_ok:
 
         weechat.hook_command(SCRIPT_COMMAND,
                              "URL bar control",
-                             "[list | hide | URK]",
+                             "[list | hide | URL]",
                              "   list: list URLs\n"
                              "   hide: list URLs\n"
                              "   toggle: toggle showing of URLs\n",
