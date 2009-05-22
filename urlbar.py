@@ -168,21 +168,21 @@ def urlbar_print_cb(data, buffer, time, tags, displayed, highlight, prefix, mess
 
 def urlbar_cmd(data, buffer, args):
     """ Callback for /url command. """
-    global urls
+    global urls, DISPLAY_ALL
 
     if args == "list":
         if urls:
-            weechat.command("", "/bar show urlbar")
+            DISPLAY_ALL = True
+            weechat.command("", '/bar show urlbar')
+            weechat.bar_item_update("urlbar_urls")
         else:
             weechat.prnt('', 'URL list empty.')
+    if args == "show":
+        weechat.command('', '/bar show urlbar')
     elif args == 'hide':
         weechat.command("", "/bar hide urlbar")
     elif args == 'toggle':
         weechat.command("", "/bar toggle urlbar")
-    elif args == 'all':
-        global DISPLAY_ALL
-        DISPLAY_ALL = True
-        weechat.command("", '/bar toggle urlbar')
     elif args == 'clear':
         urls = []
     else:
@@ -207,10 +207,11 @@ if __name__ == "__main__" and import_ok:
 
         weechat.hook_command(SCRIPT_COMMAND,
                              "URL bar control",
-                             "[list | hide | URL]",
-                             "   list: list URLs\n"
-                             "   hide: list URLs\n"
-                             "   toggle: toggle showing of URLs\n",
+                             "[list | hide | show | toggle | URL]",
+                             "   list: list all URL and show URL bar\n"
+                             "   hide: hide URL bar\n"
+                             "   show: show URL bar\n"
+                             "   toggle: toggle showing of URL bar\n",
                              "list %(urlbar_urls)",
                              "urlbar_cmd", "")
         weechat.hook_completion("urlbar_urls", "list of URLs",
