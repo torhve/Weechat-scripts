@@ -96,7 +96,8 @@ def urlbar_item_cb(data, item, window):
 
     result = ''
     for index, url in enumerate(printlist):
-        result += '%s%2d%s %s \r' % (weechat.color("yellow"), index+1, weechat.color("bar_fg"), url)
+        result += '%s%2d%s %s \r' %\
+            (weechat.color("yellow"), index+1, weechat.color("bar_fg"), url)
     return result
 
 
@@ -113,10 +114,14 @@ class URL(object):
     def __init__(self, url, buffername, timestamp, nick):
         self.url = url
         self.buffername = buffername
-        self.time = strftime(weechat.config_get_plugin('time_format'), localtime(int(timestamp)))
-        self.time = self.time.replace(':', '%s:%s' %(weechat.color(weechat.config_string(weechat.config_get('weechat.color.chat_time_delimiters'))), weechat.color('reset')))
+        self.time = strftime(
+                weechat.config_get_plugin('time_format'),
+                localtime(int(timestamp)))
+        self.time = self.time.replace(':', '%s:%s' %
+                (weechat.color(weechat.config_string(
+                weechat.config_get('weechat.color.chat_time_delimiters'))),
+                weechat.color('reset')))
         self.nick = irc_nick_find_color(nick)
-        #self.nick = nick
 
     def __str__(self):
         # Format options
