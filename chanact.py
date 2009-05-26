@@ -1,13 +1,3 @@
-''' Hotlist replacement. 
-
-Usage: first, put [chanact] in your status bar items. 
-" weechat.bar.status.items".
-
-Then you can bind keys to buffers with
-/key bind meta-w /buffer #weechat
-
-And then it will show as [Act: w] on your status bar.
-'''
 # -*- coding: utf-8 -*-
 # (this script requires WeeChat 0.3.0 or newer)
 #
@@ -33,7 +23,16 @@ And then it will show as [Act: w] on your status bar.
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
+''' Hotlist replacement. 
 
+Usage: first, put [chanact] in your status bar items. 
+" weechat.bar.status.items".
+
+Then you can bind keys to buffers with
+/key bind meta-w /buffer #weechat
+
+And then it will show as [Act: w] on your status bar.
+'''
 #
 
 import weechat as w
@@ -55,7 +54,7 @@ settings = {
     'color_3'               : 'lightcyan',
     'color_4'               : 'yellow',
     'color_8'               : 'cyan',
-    'use_keybindings'       : '1',
+    'use_keybindings'       : 'on',
     'delimiter'             : ','
 }
 
@@ -78,7 +77,7 @@ if w.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
 
     keylist = w.infolist_get('key', '', '')
     # TODO: only build keydict on key changes
-    if w.config_get_plugin('use_keybindings') == '1':
+    if w.config_get_plugin('use_keybindings') == 'on':
         while w.infolist_next(keylist):
             key = w.infolist_string(keylist, 'key')
 # we dont want jump sequences
