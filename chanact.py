@@ -65,6 +65,7 @@ hooks = (
     ('key_unbind', 'chanact_update'),
 )
 
+keydict = {}
 
 if w.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
                     SCRIPT_DESC, '', ''):
@@ -75,13 +76,8 @@ if w.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
     for hook, cb in hooks:
         w.hook_signal(hook, cb, '')
 
-    w.bar_item_new('chanact', 'chanact_cb', '')
-
-def chanact_cb(*kwargs):
-    ''' Callback ran on hotlist changes '''
-
     keylist = w.infolist_get('key', '', '')
-    keydict = {}
+    # TODO: only build keydict on key changes
     if w.config_get_plugin('use_keybindings') == '1':
         while w.infolist_next(keylist):
             key = w.infolist_string(keylist, 'key')
@@ -98,7 +94,14 @@ def chanact_cb(*kwargs):
                 command = command.replace('/buffer ', '')
                 buffer = command.lstrip('*')
                 keydict[buffer] = key
-        w.infolist_free(keylist)
+    w.infolist_free(keylist)
+
+    w.bar_item_new('chanact', 'chanact_cb', '')
+
+def chanact_cb(*kwargs):
+    ''' Callback ran on hotlist changes '''
+    global keydict
+
 
     result = w.config_get_plugin('message')
     hotlist = w.infolist_get('hotlist', '', '')
