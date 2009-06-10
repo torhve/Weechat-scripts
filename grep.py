@@ -37,6 +37,10 @@ SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Search in buffer"
 SCRIPT_COMMAND = 'grep'
 
+settings = {
+    "title_priority"       : '2',
+}
+
 
 
 def buffer_input(*kwargs):
@@ -73,9 +77,11 @@ def irc_nick_find_color(nick):
     return '%s%s%s' %(weechat.color(color), nick, weechat.color('reset'))
 
 
-def print_buffer(matching_lines):
+def update_buffer(matching_lines):
+    w.buffer_clear(search_buffer)
+
     w.buffer_set(search_buffer, "title", "Search matched %s lines" % len(matching_lines) )
-    for y, line in enumerate(matching_lines):
+    for y, line in enumerate(reversed(matching_lines)):
         weechat.prnt_y(search_buffer, y, '%s %s%s %s' % (\
             line[0],
             irc_nick_find_color(line[1]),
@@ -106,7 +112,7 @@ def grep_cmd(data, buffer, args):
         w.command('', '/help %s' %SCRIPT_COMMAND)
         return w.WEECHAT_RC_OK
 
-    linfolist = w.infolist_get('logger_buffer', '', '')
+    linfolist = w.infolist_get('logger_buffer', buffer, '')
     logfilename = ''
     log_enabled = False
     while w.infolist_next(linfolist):
@@ -137,7 +143,8 @@ def grep_cmd(data, buffer, args):
 
     if not matching_lines:
         matching_lines = (('', '', 'No matches.'),)
-    print_buffer(matching_lines)
+
+    update_buffer(matching_lines)
 
     w.buffer_set(search_buffer, "display", "1")
 
