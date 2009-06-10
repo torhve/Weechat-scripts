@@ -45,8 +45,7 @@ hooks = (
         'hotlist_*',
 )
 
-if weechat.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
-                    SCRIPT_DESC, "", ""):
+if weechat.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE, SCRIPT_DESC, "", ""):
     for option, default_value in settings.iteritems():
         if weechat.config_get_plugin(option) == "":
             weechat.config_set_plugin(option, default_value)
