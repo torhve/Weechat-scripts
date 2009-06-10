@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright (c) 2009 by xt <tor@bash.no>
-#  Based on bufsave.pl
+#  Based on bufsave.pl for 0.2.x by FlashCode
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -54,11 +54,10 @@ def cstrip(text):
 def bufsave_cmd(data, buffer, args):
     ''' Callback for /bufsave command '''
 
-    server =  w.buffer_get_string(buffer, 'localvar_server')
     filename = args
 
-
-    if not args:
+    if not filename:
+        w.command('', '/help %s' %SCRIPT_COMMAND)
         return w.WEECHAT_RC_OK
 
     if exists(filename):
