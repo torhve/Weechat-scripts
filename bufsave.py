@@ -46,6 +46,11 @@ if w.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE, SCRIPT
             "bufsave_cmd",
             '')
 
+def cstrip(text):
+    ''' Use weechat color strip on text'''
+
+    return w.string_remove_color(text, '')
+
 def bufsave_cmd(data, buffer, args):
     ''' Callback for /bufsave command '''
 
@@ -71,8 +76,8 @@ def bufsave_cmd(data, buffer, args):
     while w.infolist_next(infolist):
         fp.write('%s %s %s\n' %(\
                 w.infolist_time(infolist, 'date'),
-                w.infolist_string(infolist, 'prefix'),
-                w.infolist_string(infolist, 'message'),
+                cstrip(w.infolist_string(infolist, 'prefix')),
+                cstrip(w.infolist_string(infolist, 'message')),
                 ))
 
     w.infolist_free(infolist)
