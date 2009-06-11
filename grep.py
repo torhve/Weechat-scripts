@@ -37,12 +37,6 @@ SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Search in buffer"
 SCRIPT_COMMAND = 'grep'
 
-settings = {
-    "title_priority"       : '2',
-}
-
-
-
 def buffer_input(*kwargs):
     return w.WEECHAT_RC_OK
 
