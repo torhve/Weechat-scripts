@@ -126,6 +126,7 @@ def get_matching_commands(input):
     clist = []
     if len(input) == 0:
         commands_pos = 0
+        return []
     input = input.lower()
     infolist = w.infolist_get("history", "", "")
     while w.infolist_next(infolist):
@@ -133,6 +134,9 @@ def get_matching_commands(input):
         matching = input in text
         #if not matching and input.isdigit():
         #    matching = str(number).startswith(input)
+        if len(clist) > 9:
+           # Return max 10 commands
+            break
         if len(input) == 0 or matching:
             if not text in clist:
                 clist.append(text)
