@@ -32,10 +32,10 @@ import re
 weechat = w
 
 SCRIPT_NAME    = "histsearch"
-SCRIPT_AUTHOR  = "xt <tor@bash.no>"
+SCRIPT_AUTHOR  = "xt <xt@bash.no>"
 SCRIPT_VERSION = "0.1"
 SCRIPT_LICENSE = "GPL3"
-SCRIPT_DESC    = "Search in history"
+SCRIPT_DESC    = "Quick search in command history (think ctrl-r in bash)"
 SCRIPT_COMMAND = 'histsearch'
 
 # script options
@@ -58,10 +58,10 @@ hook_command_run = {
 }
 hooks = {}
 
-# input before command /go (we'll restore it later)
+# input before command (we'll restore it later)
 saved_input = ""
 
-# last user input (if changed, we'll update list of matching buffers)
+# last user input (if changed, we'll update list of matching commands)
 old_input = None
 
 # matching buffers
@@ -70,13 +70,11 @@ command_pos = 0
 
 if w.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
                     SCRIPT_DESC, "", ""):
-    w.hook_command(SCRIPT_COMMAND,
-                         "Command history searcher",
-                         "[expression]",
-                         "   expression: regular search expression\n",
-                         "",
-                         "histsearch_cmd",
-                         "")
+    weechat.hook_command(SCRIPT_COMMAND, "Quick search in command history", "",
+                         "You can bind command to a key, for example:\n  /key bind meta-e /histsearch\n\n" +
+                         "You can use completion key (commonly Tab and shift-Tab) to select " +
+                         "next/previous command in list.",
+                         "", "histsearch_cmd", "")
     for option, default_value in settings.iteritems():
         if w.config_get_plugin(option) == "":
             w.config_set_plugin(option, default_value)
@@ -138,13 +136,11 @@ def get_matching_commands(input):
         if len(input) == 0 or matching:
             if not text in clist:
                 clist.append(text)
-            #if len(input) == 0 and w.infolist_pointer(infolist, "pointer") == w.current_buffer():
-            #    commands_pos = len(list) - 1
     w.infolist_free(infolist)
-    #clist.reverse()
     return clist
 
 def get_command_string(commands, pos, input):
+    ''' Build the string that is displayed on input bar '''
 
     global settings
 
@@ -158,12 +154,6 @@ def get_command_string(commands, pos, input):
         selected = ''
         if i == pos:
             selected = "_selected"
-#        returnstr += ' %s%s%s%s' % (\
-#                w.color(colors['color_number',
-#                command[0],
-#                w.color('reset'),
-#                command[1:]
-#                    )
         index = command.find(input)
         index2 = index + len(input)
         returnstr += ' ' + \
@@ -173,16 +163,16 @@ def get_command_string(commands, pos, input):
                 weechat.color(colors["color_name" + selected]) + command[index2:] + \
                 weechat.color("reset")
 
-        #if i > 10:
-        #    # Max 10 commands
-        #    break
+        if i > 10:
+            # Display max 10 commands
+            break
 
     return returnstr
 
 def input_modifier(data, modifier, modifier_data, string):
     """ This modifier is called when input text item is built by WeeChat
     (commonly after changes in input or cursor move), it builds new input with
-    prefix ("Commands:"), and suffix (list of buffers found) """
+    prefix ("Commands:"), and suffix (list of commands found) """
     global old_input, commands, commands_pos
     if modifier_data != w.current_buffer():
         return ""
@@ -220,10 +210,10 @@ def command_run_input(data, buffer, command):
                                  w.WEECHAT_HOOK_SIGNAL_STRING, "")
         return w.WEECHAT_RC_OK_EAT
     elif command == "/input return":
-        # switch to selected buffer (if any)
+        # As in enter was pressed.
+        # Put the current command on the input bar
         histsearch_end(buffer)
         if len(commands) > 0:
-            #weechat.command(buffer, "/buffer " + str(buffers[commands_pos]["number"]))
             w.command(buffer, "/input insert " + commands[commands_pos])
         return w.WEECHAT_RC_OK_EAT
     return w.WEECHAT_RC_OK
