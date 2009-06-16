@@ -22,6 +22,8 @@
 # (this script requires WeeChat 0.3.0 or newer)
 #
 # History:
+# 2009-06-16, sleo
+#     version 0.2: find existing grep window, scroll to bottom 
 # 2009-05-24, xt <xt@bash.no>
 #     version 0.1: initial release
 
@@ -31,8 +33,8 @@ import re
 weechat = w
 
 SCRIPT_NAME    = "grep"
-SCRIPT_AUTHOR  = "xt <tor@bash.no>"
-SCRIPT_VERSION = "0.1"
+SCRIPT_AUTHOR  = "xt <xt@bash.no>"
+SCRIPT_VERSION = "0.2"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Search in buffer"
 SCRIPT_COMMAND = 'grep'
@@ -55,10 +57,6 @@ if w.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
                          "grep_cmd",
                          "")
 
-search_buffer = w.buffer_new(SCRIPT_NAME, "buffer_input", "", "buffer_close", "")
-w.buffer_set(search_buffer, "type", "free")
-w.buffer_set(search_buffer, "title", "Search output buffer")
-
 def irc_nick_find_color(nick):
 
     color = 0
@@ -75,7 +73,7 @@ def update_buffer(matching_lines):
     w.buffer_clear(search_buffer)
 
     w.buffer_set(search_buffer, "title", "Search matched %s lines" % len(matching_lines) )
-    for y, line in enumerate(reversed(matching_lines)):
+    for y, line in enumerate(matching_lines):
         weechat.prnt_y(search_buffer, y, '%s %s%s %s' % (\
             line[0],
             irc_nick_find_color(line[1]),
@@ -101,12 +99,13 @@ def find_infolist_matching_lines(buffer, matcher):
 
 
 def grep_cmd(data, buffer, args):
+    global search_buffer
 
     if not args:
         w.command('', '/help %s' %SCRIPT_COMMAND)
         return w.WEECHAT_RC_OK
 
-    linfolist = w.infolist_get('logger_buffer', buffer, '')
+    linfolist = w.infolist_get('logger_buffer', '', '')
     logfilename = ''
     log_enabled = False
     while w.infolist_next(linfolist):
@@ -134,13 +133,19 @@ def grep_cmd(data, buffer, args):
     else:
         matching_lines = find_infolist_matching_lines(buffer, matcher)
 
-
     if not matching_lines:
         matching_lines = (('', '', 'No matches.'),)
+
+    if not w.buffer_search('python',SCRIPT_NAME):
+        search_buffer = w.buffer_new(SCRIPT_NAME, "buffer_input", "", "buffer_close", "")
+        w.buffer_set(search_buffer, "type", "free")
+        w.buffer_set(search_buffer, "title", "Search output buffer")
 
     update_buffer(matching_lines)
 
     w.buffer_set(search_buffer, "display", "1")
+
+    w.command(search_buffer, "/window scroll_bottom")
 
     return w.WEECHAT_RC_OK
 
