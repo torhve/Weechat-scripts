@@ -136,8 +136,8 @@ def grep_cmd(data, buffer, args):
     if not matching_lines:
         matching_lines = (('', '', 'No matches.'),)
 
-    if not w.buffer_search('python',SCRIPT_NAME):
-        search_buffer = w.buffer_new(SCRIPT_NAME, "buffer_input", "", "buffer_close", "")
+    if not w.buffer_search('python', SCRIPT_COMMAND):
+        search_buffer = w.buffer_new(SCRIPT_COMMAND, "buffer_input", "", "buffer_close", "")
         w.buffer_set(search_buffer, "type", "free")
         w.buffer_set(search_buffer, "title", "Search output buffer")
 
