@@ -22,6 +22,8 @@
 # (this script requires WeeChat 0.3.0 or newer)
 #
 # History:
+# 2009-06-17, xt
+#   version 0.3: use formatted buffer and prefix. Added --all
 # 2009-06-16, sleo
 #     version 0.2: find existing grep window, scroll to bottom 
 # 2009-05-24, xt <xt@bash.no>
@@ -33,7 +35,7 @@ import re
 
 SCRIPT_NAME    = "grep"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "0.2"
+SCRIPT_VERSION = "0.3"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Search in buffer"
 SCRIPT_COMMAND = 'grep'
@@ -68,17 +70,6 @@ def irc_nick_find_color(nick):
     return '%s%s%s' %(w.color(color), nick, w.color('reset'))
 
 
-def update_buffer(matching_lines):
-    w.buffer_clear(search_buffer)
-
-    w.buffer_set(search_buffer, "title", "Search matched %s lines" % len(matching_lines) )
-    for y, line in enumerate(matching_lines):
-        #w.prnt_y(search_buffer, y, '%s %s%s %s' % (\
-        w.prnt(search_buffer, '%s %s%s %s' % (\
-            line[0],
-            irc_nick_find_color(line[1]),
-            w.color('reset'),
-            line[2]))
 
 def find_infolist_matching_lines(buffer, matcher):
     matching_lines = []
@@ -98,12 +89,8 @@ def find_infolist_matching_lines(buffer, matcher):
     return matching_lines
 
 
-def grep_cmd(data, buffer, args):
-    global search_buffer
-
-    if not args:
-        w.command('', '/help %s' %SCRIPT_COMMAND)
-        return w.WEECHAT_RC_OK
+def get_logfilename(buffer):
+    ''' Given buffer pointer, finds log filename or returns False '''
 
     linfolist = w.infolist_get('logger_buffer', '', '')
     logfilename = ''
@@ -116,16 +103,15 @@ def grep_cmd(data, buffer, args):
             break
     w.infolist_free(linfolist)
 
+    if not log_enabled:
+        return False
 
-    try:
-        matcher = re.compile(args, re.IGNORECASE)
-    except Exception, e:
-        w.prnt('', '%s failed: %s' %(SCRIPT_COMMAND, str(e)))
-        return w.WEECHAT_RC_OK
+    return logfilename
 
+def get_matching_lines(buffer, matcher):
     matching_lines = []
-
-    if log_enabled:
+    logfilename = get_logfilename(buffer)
+    if logfilename:
         with file(logfilename, 'r') as f:
             for line in f:
                 if matcher.search(line):
@@ -133,8 +119,55 @@ def grep_cmd(data, buffer, args):
     else:
         matching_lines = find_infolist_matching_lines(buffer, matcher)
 
-    if not matching_lines:
-        matching_lines = (('', '', 'No matches.'),)
+    return matching_lines
+
+def get_all_buffers():
+    buffers = []
+    infolist = w.infolist_get("buffer", "", "")
+    while w.infolist_next(infolist):
+        buffers.append(w.infolist_pointer(infolist, "pointer"))
+    w.infolist_free(infolist)
+    return buffers
+
+def grep_cmd(data, buffer, args):
+    global search_buffer
+    
+
+    if not args:
+        w.command('', '/help %s' %SCRIPT_COMMAND)
+        return w.WEECHAT_RC_OK
+
+    if ' ' in args and args.startswith('--'):
+        sargs = args.split(' ')
+        opts = sargs[0:-1]
+        pattern = sargs[-1]
+    else:
+        pattern = args
+        opts = ''
+
+    try:
+        matcher = re.compile(pattern, re.IGNORECASE)
+    except Exception, e:
+        w.prnt('', '%s failed (Regex Error): %s' %(SCRIPT_COMMAND, str(e)))
+        return w.WEECHAT_RC_OK
+
+    matching_lines = []
+
+    if '--all' in opts:
+        for buffer in get_all_buffers():
+            matching_lines += get_matching_lines(buffer, matcher)
+    else:
+        matching_lines += get_matching_lines(buffer, matcher)
+
+
+    update_buffer(matching_lines, pattern)
+    w.command(search_buffer, "/window scroll_bottom")
+
+    return w.WEECHAT_RC_OK
+
+
+def buffer_create():
+    global search_buffer
 
     if not w.buffer_search('python', SCRIPT_COMMAND):
         search_buffer = w.buffer_new(SCRIPT_COMMAND, "buffer_input", "", "buffer_close", "")
@@ -144,12 +177,20 @@ def grep_cmd(data, buffer, args):
         w.buffer_set(search_buffer, "title", "Search output buffer")
         w.buffer_set(search_buffer, "localvar_set_no_log", "1")
 
-    update_buffer(matching_lines)
+
+def update_buffer(matching_lines, pattern):
+    buffer_create()
+
+    w.buffer_clear(search_buffer)
+
+    w.buffer_set(search_buffer, "title", "Search '%s' matched %s lines" % (pattern, len(matching_lines) ))
+
+    for line in matching_lines:
+        w.prnt(search_buffer, '%s\t%s %s %s' % (\
+            line[0],
+            irc_nick_find_color(line[1]),
+            w.color('reset'),
+            line[2]))
 
     w.buffer_set(search_buffer, "display", "1")
-
-    w.command(search_buffer, "/window scroll_bottom")
-
-    return w.WEECHAT_RC_OK
-
 
