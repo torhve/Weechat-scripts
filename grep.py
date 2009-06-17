@@ -30,7 +30,6 @@
 from __future__ import with_statement # This isn't required in Python 2.6
 import weechat as w
 import re
-weechat = w
 
 SCRIPT_NAME    = "grep"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
@@ -63,10 +62,10 @@ def irc_nick_find_color(nick):
     for char in nick:
         color += ord(char)
 
-    color %= weechat.config_integer(weechat.config_get("weechat.look.color_nicks_number"))
-    color = weechat.config_get('weechat.color.chat_nick_color%02d' %(color+1))
-    color = weechat.config_string(color)
-    return '%s%s%s' %(weechat.color(color), nick, weechat.color('reset'))
+    color %= w.config_integer(w.config_get("weechat.look.color_nicks_number"))
+    color = w.config_get('weechat.color.chat_nick_color%02d' %(color+1))
+    color = w.config_string(color)
+    return '%s%s%s' %(w.color(color), nick, w.color('reset'))
 
 
 def update_buffer(matching_lines):
@@ -74,7 +73,8 @@ def update_buffer(matching_lines):
 
     w.buffer_set(search_buffer, "title", "Search matched %s lines" % len(matching_lines) )
     for y, line in enumerate(matching_lines):
-        weechat.prnt_y(search_buffer, y, '%s %s%s %s' % (\
+        #w.prnt_y(search_buffer, y, '%s %s%s %s' % (\
+        w.prnt(search_buffer, '%s %s%s %s' % (\
             line[0],
             irc_nick_find_color(line[1]),
             w.color('reset'),
@@ -138,8 +138,11 @@ def grep_cmd(data, buffer, args):
 
     if not w.buffer_search('python', SCRIPT_COMMAND):
         search_buffer = w.buffer_new(SCRIPT_COMMAND, "buffer_input", "", "buffer_close", "")
-        w.buffer_set(search_buffer, "type", "free")
+        w.buffer_set(search_buffer, "time_for_each_line", "0")
+        w.buffer_set(search_buffer, "nicklist", "0")
+        w.buffer_set(search_buffer, "type", "formatted")
         w.buffer_set(search_buffer, "title", "Search output buffer")
+        w.buffer_set(search_buffer, "localvar_set_no_log", "1")
 
     update_buffer(matching_lines)
 
