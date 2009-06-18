@@ -40,14 +40,14 @@ SCRIPT_DESC    = "Bar with URLs. For easy clicking or selecting."
 SCRIPT_COMMAND = "url"
 
 settings = {
-    "visible_amount"        : '5',  # Amount of URLS visible in urlbar at any given time
-    "visible_seconds"       : '5',  # Amount of seconds URLbar is visible
-    "use_popup"             : 'on', # Pop up automatically
-    "remember_amount"       : '25', # Max amout of URLs to keep in RAM
-    "ignore"                : '',   # List of buffers to ignore. (Space separated)
-    "show_timestamp"        : 'on', # Show timestamp in list
-    "show_nick"             : 'on', # Show nick in list
-    "show_buffername"       : 'on', # Show buffer name in list
+    "visible_amount"        : '5',     # Amount of URLS visible in urlbar at any given time
+    "visible_seconds"       : '5',     # Amount of seconds URLbar is visible
+    "use_popup"             : 'on',    # Pop up automatically
+    "remember_amount"       : '25',    # Max amout of URLs to keep in RAM
+    "ignore"                : 'grep',  # List of buffers to ignore. (Space separated)
+    "show_timestamp"        : 'on',    # Show timestamp in list
+    "show_nick"             : 'on',    # Show nick in list
+    "show_buffername"       : 'on',    # Show buffer name in list
     "time_format"           : '%H:%M', # Time format
 }
 
