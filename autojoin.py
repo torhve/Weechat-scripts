@@ -29,8 +29,8 @@ SCRIPT_NAME    = "autojoin"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
 SCRIPT_VERSION = "0.1"
 SCRIPT_LICENSE = "GPL3"
-SCRIPT_DESC    = "Populate autojoin for all servers according to currently joined channels"
-SCRIPT_COMMAND = "autojoin_cur"
+SCRIPT_DESC    = "Configure autojoin for all servers according to currently joined channels"
+SCRIPT_COMMAND = "autojoin"
 
 def autojoin_cb(data, buffer, args):
 
