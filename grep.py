@@ -161,7 +161,6 @@ def grep_cmd(data, buffer, args):
 
 
     update_buffer(matching_lines, pattern)
-    w.command(search_buffer, "/window scroll_bottom")
 
     return w.WEECHAT_RC_OK
 
@@ -173,7 +172,6 @@ def buffer_create():
         search_buffer = w.buffer_new(SCRIPT_COMMAND, "buffer_input", "", "buffer_close", "")
         w.buffer_set(search_buffer, "time_for_each_line", "0")
         w.buffer_set(search_buffer, "nicklist", "0")
-        w.buffer_set(search_buffer, "type", "formatted")
         w.buffer_set(search_buffer, "title", "Search output buffer")
         w.buffer_set(search_buffer, "localvar_set_no_log", "1")
 
