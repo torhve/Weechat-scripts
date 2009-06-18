@@ -35,7 +35,7 @@ import weechat as w
 
 SCRIPT_NAME    = "title"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "0.3"
+SCRIPT_VERSION = "0.4"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Set screen title to current buffer name + hotlist items with configurable priority level"
 
