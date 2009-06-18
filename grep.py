@@ -18,7 +18,7 @@
 #
 
 #
-# Set screen title
+# Buffer searcher
 # (this script requires WeeChat 0.3.0 or newer)
 #
 # History:
@@ -167,13 +167,14 @@ def grep_cmd(data, buffer, args):
 
 def buffer_create():
     global search_buffer
-
-    if not w.buffer_search('python', SCRIPT_COMMAND):
+    
+    search_buffer = w.buffer_search('python', SCRIPT_COMMAND)
+    if not search_buffer:
         search_buffer = w.buffer_new(SCRIPT_COMMAND, "buffer_input", "", "buffer_close", "")
-        w.buffer_set(search_buffer, "time_for_each_line", "0")
-        w.buffer_set(search_buffer, "nicklist", "0")
-        w.buffer_set(search_buffer, "title", "Search output buffer")
-        w.buffer_set(search_buffer, "localvar_set_no_log", "1")
+    w.buffer_set(search_buffer, "time_for_each_line", "0")
+    w.buffer_set(search_buffer, "nicklist", "0")
+    w.buffer_set(search_buffer, "title", "Search output buffer")
+    w.buffer_set(search_buffer, "localvar_set_no_log", "1")
 
 
 def update_buffer(matching_lines, pattern):
