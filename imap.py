@@ -22,7 +22,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 '''  
-Usage: put [imap] in your status bar items.  (Or any other bar ot your liking)
+Usage: put [imap] in your status bar items.  (Or any other bar to your liking)
 "/set weechat.bar.status.items".
 '''
 
