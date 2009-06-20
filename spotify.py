@@ -38,6 +38,7 @@ SCRIPT_DESC    = "Look up spotify urls"
 
 settings = {
     "buffers"        : 'xt`,',     # comma separated list of buffers
+    "gateway"        : '',         # http spotify gw address
 }
 
 
@@ -89,8 +90,7 @@ def spotify_print_cb(data, buffer, time, tags, displayed, highlight, prefix, mes
             printReply(buffer_name, cache[spotify_id])
             return weechat.WEECHAT_RC_OK
 
-        SPOTIFYURL = 'http://83.242.11.12:5907/'
-        url  = SPOTIFYURL + spotify_id
+        url = w.config_get_plugin('gw') + spotify_id
         if spotify_hook_process != "":
             weechat.unhook(spotify_hook_process)
             spotify_hook_process = ""
