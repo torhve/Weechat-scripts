@@ -82,7 +82,6 @@ def imap_cb(*kwargs):
 
     imap = Imap()
     unreadCount = imap.unreadCount()
-    print unreadCount
     imap.logout()
 
     if not unreadCount == 0:
