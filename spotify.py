@@ -90,7 +90,7 @@ def spotify_print_cb(data, buffer, time, tags, displayed, highlight, prefix, mes
             printReply(buffer_name, cache[spotify_id])
             return weechat.WEECHAT_RC_OK
 
-        url = w.config_get_plugin('gw') + spotify_id
+        url = w.config_get_plugin('gateway') + spotify_id
         if spotify_hook_process != "":
             weechat.unhook(spotify_hook_process)
             spotify_hook_process = ""
