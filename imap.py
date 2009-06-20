@@ -51,6 +51,7 @@ settings = {
     'count_color'       : 'default',
     'interval'          : '5',
     'short_name'        : 'on',
+    'time_format'       : '%H:%M',
 }
 
 imap = False
@@ -61,6 +62,8 @@ active_folder_name = ''
 
 active_message_line = 0
 active_message_uid = 0
+
+cached_folder_list = []
 
 class Imap(object):
 
@@ -139,6 +142,15 @@ def imap_update(*kwargs):
     return w.WEECHAT_RC_OK
 
 def buffer_input(data, buffer, string):
+
+    global cached_folder_list, active_folder_line
+
+    for i, folder in enumerate(cached_folder_list):
+        if string in folder:
+            active_folder_line = i
+            w.bar_item_update('imap_folders')
+            
+
     return w.WEECHAT_RC_OK
 
 def buffer_close(*kwargs):
@@ -196,6 +208,13 @@ def print_messages(mailbox='INBOX'):
         #flags = re.search(r'\(FLAGS \((?P<flags>.+)\) ', meta).groupdict()['flags']
 
         internaldate = datetime.fromtimestamp(time.mktime(i.Internaldate2tuple(meta)))
+        internaldate = internaldate.strftime(w.config_get_plugin('time_format'))
+        internaldate = internaldate.replace(':', '%s:%s' %
+                (w.color(w.config_string(
+                w.config_get('weechat.color.chat_time_delimiters'))),
+                w.color('reset')))
+        internaldate = internaldate.strip()
+                
         sender = re.search(r'From: ?(?P<from>.+)\s', headers, re.I)
         if sender:
             sender = sender.groupdict()['from']
@@ -214,11 +233,11 @@ def print_messages(mailbox='INBOX'):
             bgcolor = 'red'
 
         if ' ' in sender:
-            sender = irc_nick_find_color(sender.split()[0].strip('"'), bgcolor)
+            sender = irc_nick_find_color(sender.split()[0].strip('"'))
         else:
-            sender = irc_nick_find_color(sender, bgcolor)
+            sender = irc_nick_find_color(sender)
 
-        w.prnt(imap_buffer, '%s\t%s%s %s' % \
+        w.prnt(imap_buffer, '%s %s\t%s %s' % \
                 (internaldate, sender, w.color('default,%s' %bgcolor), subject))
         y += 1
         if y == 25:
@@ -257,8 +276,19 @@ def imap_cmd(data, buffer, args):
             imap = Imap()
             imap.mark_read(active_folder_name, active_message_uid)
             imap.logout()
-            print_messages(active_folder_name)
+            w.bar_item_update('imap_folders')
     return w.WEECHAT_RC_OK
+
+def create_folder_cache():
+    global cached_folder_list
+
+    imap = Imap()
+
+    for folder in imap.list():
+        name = ' '.join(folder.split()[2:])
+        name = name.strip('"')
+        cached_folder_list.append(name)
+    imap.logout()
     
 def imap_folders_item_cb(data, item, window):
     ''' Callback that prints iamp folders on the imap bar '''
@@ -286,6 +316,7 @@ def imap_folders_item_cb(data, item, window):
         if linenr == active_folder_line:
            bgcolor = 'red'
            active_folder_name = name
+
 
         if w.config_get_plugin('short_name') == 'on' and '.' in name:
             name = '.'.join(name.split('.')[1:])
@@ -347,3 +378,5 @@ if w.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
     w.bar_new("imap", "on", "0", "root", "", "right", "horizontal",
                     "vertical", "0", "0", "default", "default", "default", "1",
                     "imap_folders")
+
+    create_folder_cache()
