@@ -85,6 +85,6 @@ if w.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
     w.hook_timer(\
             int(w.config_get_plugin('interval'))*1000*60,
             0,
-            1,
+            0,
             'imap_update',
             '')
