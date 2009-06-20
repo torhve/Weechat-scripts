@@ -48,26 +48,50 @@ settings = {
     'interval'          : '5',
 }
 
-iRe = compile("UNSEEN (\d+)")
+imap = False
+
+class Imap(object):
+
+    iRe = compile("UNSEEN (\d+)")
+    conn = False
+
+    def __init__(self):
+        username = w.config_get_plugin('username')
+        password = w.config_get_plugin('password')
+        hostname = w.config_get_plugin('hostname')
+        port = int(w.config_get_plugin('port'))
+
+        if username and password and hostname and port:
+             M = i.IMAP4_SSL(hostname, port)
+             M.login_cram_md5(username, password)
+             self.conn = M
+
+    def unreadCount(self, mailbox='INBOX'):
+        unreadCount = int(self.iRe.search(self.conn.status("INBOX", "(UNSEEN)")[1][0]).group(1))
+        return unreadCount
+
+    def logout(self):
+        try:
+            #self.conn.close()
+            self.conn.logout()
+        except Exception, e:
+            print e
+            pass
 
 def imap_cb(*kwargs):
-    username = w.config_get_plugin('username')
-    password = w.config_get_plugin('password')
-    hostname = w.config_get_plugin('hostname')
-    port = int(w.config_get_plugin('port'))
 
-    if username and password and hostname and port:
-         M = i.IMAP4_SSL(hostname, port)
-         M.login_cram_md5(username, password)
-         unreadCount = iRe.search(M.status("INBOX", "(UNSEEN)")[1][0]).group(1)
+    imap = Imap()
+    unreadCount = imap.unreadCount()
+    print unreadCount
+    imap.logout()
 
-         if not unreadCount == '0':
-             return '%s%s%s%s%s' % (\
-                     w.color(w.config_get_plugin('message_color')),
-                     w.config_get_plugin('message'),
-                     w.color(w.config_get_plugin('count_color')),
-                     unreadCount,
-                     w.color('reset'))
+    if not unreadCount == 0:
+        return '%s%s%s%s%s' % (\
+             w.color(w.config_get_plugin('message_color')),
+             w.config_get_plugin('message'),
+             w.color(w.config_get_plugin('count_color')),
+             unreadCount,
+             w.color('reset'))
     return ''
 
 def imap_update(*kwargs):
