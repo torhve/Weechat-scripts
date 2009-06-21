@@ -24,6 +24,19 @@
 '''  
 Usage: put [imap] in your status bar items.  (Or any other bar to your liking)
 "/set weechat.bar.status.items".
+
+Also /imap for a crude imap client.
+
+Keybindings are :
+meta-r for mark as read
+meta-d for delete
+meta-f for fetch (read)
+
+right arrow for next folder
+left arrow for previous folder
+
+up arrow for previous message
+down arrow for next message
 '''
 
 import weechat as w
@@ -32,6 +45,7 @@ from datetime import datetime
 import imaplib as i
 import re
 from email.Header import decode_header
+from email import message_from_string
 
 SCRIPT_NAME    = "imap"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
@@ -111,17 +125,36 @@ class Imap(object):
             retur += header
         return retur.strip().encode('UTF-8', 'replace')
 
+    def delete(self, mailbox, uid):
+        ''' Mark a message as deleted given mailbox and uid.
+            Also expunge the box.
+        '''
+
+        self.conn.select(mailbox)
+        self.conn.store(uid, '+FLAGS', '\\Deleted')
+        self.conn.expunge()
+
     def mark_read(self, mailbox, uid):
         ''' Mark a message as seen given mailbox and uid'''
 
         self.conn.select(mailbox)
         self.conn.store(uid, '+FLAGS', '\\Seen')
 
+    def fetch_num(self, mailbox, uid, readonly=True):
+        ''' Fetch a message as seen given mailbox and uid'''
+
+        self.conn.select(mailbox, readonly)
+        typ, data = self.conn.fetch(active_message_uid, '(RFC822)')
+        data = data[0] # only one message is returned
+        meta, mail = data[0], data[1]
+        
+        message = message_from_string(mail)
 
 
-
+        return message
 
 def imap_cb(*kwargs):
+    ''' Callback for the bar item with unread count '''
 
     imap = Imap()
     unreadCount = imap.unreadCount()
@@ -174,7 +207,9 @@ def buffer_create():
     w.buffer_set(imap_buffer, 'key_bind_meta2-B', '/%s message_down' %SCRIPT_COMMAND)
     w.buffer_set(imap_buffer, 'key_bind_meta2-D', '/%s folder_up' %SCRIPT_COMMAND)
     w.buffer_set(imap_buffer, 'key_bind_meta2-C', '/%s folder_down' %SCRIPT_COMMAND)
+    w.buffer_set(imap_buffer, 'key_bind_meta-f', '/%s message_fetch' %SCRIPT_COMMAND)
     w.buffer_set(imap_buffer, 'key_bind_meta-r', '/%s message_mark_read' %SCRIPT_COMMAND)
+    w.buffer_set(imap_buffer, 'key_bind_meta-d', '/%s message_delete' %SCRIPT_COMMAND)
 
 def irc_nick_find_color(nick, bgcolor='default'):
 
@@ -187,7 +222,21 @@ def irc_nick_find_color(nick, bgcolor='default'):
     color = w.config_string(color)
     return '%s%s%s' %(w.color('%s,%s' %(color, bgcolor)), nick, w.color('reset'))
 
+def print_message():
+    ''' Print a single email to the buffer '''
+
+    global imap_buffer, active_message_line, active_message_uid
+
+    imap = Imap()
+    mail = imap.fetch_num(active_folder_name, active_message_uid)
+    imap.logout()
+
+    w.buffer_clear(imap_buffer)
+    w.prnt(imap_buffer, mail.get_payload())
+
+
 def print_messages(mailbox='INBOX'):
+    ''' Print all unread messages in a folder to buffer '''
 
     global imap_buffer, active_message_line, active_message_uid
 
@@ -277,7 +326,17 @@ def imap_cmd(data, buffer, args):
             imap.mark_read(active_folder_name, active_message_uid)
             imap.logout()
             w.bar_item_update('imap_folders')
+    if args == 'message_delete':
+        if active_message_uid:
+            imap = Imap()
+            imap.delete(active_folder_name, active_message_uid)
+            imap.logout()
+            w.bar_item_update('imap_folders')
+    if args == 'message_fetch':
+        if active_message_uid:
+            print_message()
     return w.WEECHAT_RC_OK
+
 
 def create_folder_cache():
     global cached_folder_list
@@ -288,6 +347,8 @@ def create_folder_cache():
         name = ' '.join(folder.split()[2:])
         name = name.strip('"')
         cached_folder_list.append(name)
+
+    cached_folder_list.sort()
     imap.logout()
     
 def imap_folders_item_cb(data, item, window):
@@ -297,6 +358,8 @@ def imap_folders_item_cb(data, item, window):
 
     active_message_uid = 0
     active_message_line = 0
+
+    active_folder_has_unread_messages = False
 
     imap = Imap()
 
@@ -316,6 +379,9 @@ def imap_folders_item_cb(data, item, window):
         if linenr == active_folder_line:
            bgcolor = 'red'
            active_folder_name = name
+           if unreadCount:
+               if unreadCount > 0:
+                   active_folder_has_unread_messages = True
 
 
         if w.config_get_plugin('short_name') == 'on' and '.' in name:
@@ -324,7 +390,9 @@ def imap_folders_item_cb(data, item, window):
 
     imap.logout()
 
-    print_messages(active_folder_name)
+
+    if active_folder_has_unread_messages:
+        print_messages(active_folder_name)
     return result
 
 def toggle_imap_bar(data, signal, signaldata):
@@ -366,12 +434,9 @@ if w.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
             '')
 
     w.hook_command(SCRIPT_COMMAND,
-                             "URL bar control",
-                             "[list | hide | show | toggle | URL]",
-                             "   list: list all URL and show URL bar\n"
-                             "   hide: hide URL bar\n"
-                             "   show: show URL bar\n"
-                             "   toggle: toggle showing of URL bar\n",
+                             "imap client",
+                             "[]",
+                             "                                    \n",
                              "",
                              "imap_cmd", "")
     w.bar_item_new("imap_folders", "imap_folders_item_cb", "");
