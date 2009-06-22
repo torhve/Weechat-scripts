@@ -32,19 +32,40 @@ SCRIPT_DESC    = "Auto show and hide nicklist depending on channel name"
 
 settings = {
     "display_channels"              : '', # Comma separated
+    "hide_channels"                 : '', # Comma separated
 }
 
 def check_nicklist_cb(data, signal, signal_data):
     ''' The callback that checks if nicklist should be displayed '''
 
-    current_buffer_name = w.buffer_get_string(w.current_buffer(), 'name')
-    for buffer_name in w.config_get_plugin('display_channels').split(','):
-        print '%s%s' %(current_buffer_name, buffer_name)
-        if unicode(current_buffer_name) == unicode(buffer_name):
-            w.command('', '/bar show nicklist')
-            break
+    current_buffer = w.current_buffer()
+    current_buffer_name = w.buffer_get_string(current_buffer, 'name')
+    display_channels = w.config_get_plugin('display_channels')
+    hide_channels = w.config_get_plugin('hide_channels')
+
+    if display_channels:
+        for buffer_name in display_channels.split(','):
+            if unicode(current_buffer_name) == unicode(buffer_name):
+                w.command(current_buffer, '/buffer set nicklist 1')
+                print "match"
+                break
+            else:
+                print 'unmatch'
+                channel = w.buffer_get_string(current_buffer, "localvar_channel")
+                if w.info_get("irc_is_channel", channel) == "1":
+                    w.command(current_buffer, '/buffer set nicklist 0')
     else:
-        w.command('', '/bar hide nicklist')
+        if hide_channels:
+            for buffer_name in hide_channels.split(','):
+                if unicode(current_buffer_name) == unicode(buffer_name):
+                    print "matc2"
+                    w.command(current_buffer, '/buffer set nicklist 0')
+                    break
+            else:
+                print 'unmatch2'
+                channel = w.buffer_get_string(current_buffer, "localvar_channel")
+                if w.info_get("irc_is_channel", channel) == "1":
+                    w.command(current_buffer, '/buffer set nicklist 1')
 
     return w.WEECHAT_RC_OK
 
