@@ -22,6 +22,8 @@
 # (this script requires WeeChat 0.3.0 or newer)
 #
 # History:
+# 2009-06-22
+#   version 0.4: added --all to help
 # 2009-06-17, xt
 #   version 0.3: use formatted buffer and prefix. Added --all
 # 2009-06-16, sleo
@@ -35,7 +37,7 @@ import re
 
 SCRIPT_NAME    = "grep"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "0.3"
+SCRIPT_VERSION = "0.4"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Search in buffer"
 SCRIPT_COMMAND = 'grep'
@@ -52,8 +54,9 @@ if w.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
                     SCRIPT_DESC, "", ""):
     w.hook_command(SCRIPT_COMMAND,
                          "Buffer searcher",
-                         "[expression]",
-                         "   expression: regular search expression\n",
+                         "[--all] expression",
+                         "  --all: search all buffers with logs\n"
+                         "  expression: regular search expression\n",
                          "",
                          "grep_cmd",
                          "")
