@@ -28,7 +28,7 @@ SCRIPT_NAME    = "nicklist_autoshow"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
 SCRIPT_VERSION = "0.1"
 SCRIPT_LICENSE = "GPL3"
-SCRIPT_DESC    = "Auto show and hide nicklist depending on channel"
+SCRIPT_DESC    = "Auto show and hide nicklist depending on channel name"
 
 settings = {
     "display_channels"              : '', # Comma separated
