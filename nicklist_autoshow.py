@@ -47,10 +47,8 @@ def check_nicklist_cb(data, signal, signal_data):
         for buffer_name in display_channels.split(','):
             if unicode(current_buffer_name) == unicode(buffer_name):
                 w.command(current_buffer, '/buffer set nicklist 1')
-                print "match"
                 break
             else:
-                print 'unmatch'
                 channel = w.buffer_get_string(current_buffer, "localvar_channel")
                 if w.info_get("irc_is_channel", channel) == "1":
                     w.command(current_buffer, '/buffer set nicklist 0')
@@ -58,11 +56,9 @@ def check_nicklist_cb(data, signal, signal_data):
         if hide_channels:
             for buffer_name in hide_channels.split(','):
                 if unicode(current_buffer_name) == unicode(buffer_name):
-                    print "matc2"
                     w.command(current_buffer, '/buffer set nicklist 0')
                     break
             else:
-                print 'unmatch2'
                 channel = w.buffer_get_string(current_buffer, "localvar_channel")
                 if w.info_get("irc_is_channel", channel) == "1":
                     w.command(current_buffer, '/buffer set nicklist 1')
