@@ -31,7 +31,7 @@ SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Auto show and hide nicklist depending on channel"
 
 settings = {
-    "display_channels"              : 'bee.&bitlbee', # Comma separated
+    "display_channels"              : '', # Comma separated
 }
 
 def check_nicklist_cb(data, signal, signal_data):
