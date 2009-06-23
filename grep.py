@@ -22,6 +22,8 @@
 # (this script requires WeeChat 0.3.0 or newer)
 #
 # History:
+# 2009-06-23
+#   version 0.4: added --exact
 # 2009-06-22
 #   version 0.4: added --all to help
 # 2009-06-17, xt
@@ -54,8 +56,9 @@ if w.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
                     SCRIPT_DESC, "", ""):
     w.hook_command(SCRIPT_COMMAND,
                          "Buffer searcher",
-                         "[--all] expression",
+                         "[--all] [--exact] expression",
                          "  --all: search all buffers with logs\n"
+                         "  --exact: only return the exact match, not the matching line\n"
                          "  expression: regular search expression\n",
                          "",
                          "grep_cmd",
@@ -71,26 +74,6 @@ def irc_nick_find_color(nick):
     color = w.config_get('weechat.color.chat_nick_color%02d' %(color+1))
     color = w.config_string(color)
     return '%s%s%s' %(w.color(color), nick, w.color('reset'))
-
-
-
-def find_infolist_matching_lines(buffer, matcher):
-    matching_lines = []
-    infolist = w.infolist_get('buffer_lines', buffer, '')
-    while w.infolist_next(infolist):
-        message = w.infolist_string(infolist, 'message')
-        prefix = w.infolist_string(infolist, 'prefix')
-        if matcher.search(message) or matcher.search(prefix):
-            matching_lines.append((
-                w.infolist_time(infolist, 'date'),
-                w.infolist_string(infolist, 'prefix'),
-                w.infolist_string(infolist, 'message'),
-                ))
-
-    w.infolist_free(infolist)
-
-    return matching_lines
-
 
 def get_logfilename(buffer):
     ''' Given buffer pointer, finds log filename or returns False '''
@@ -111,16 +94,50 @@ def get_logfilename(buffer):
 
     return logfilename
 
-def get_matching_lines(buffer, matcher):
+def find_infolist_matching_lines(buffer, matcher, exact):
+    ''' if exact is True only return the exact match '''
+
+    matching_lines = []
+    infolist = w.infolist_get('buffer_lines', buffer, '')
+    while w.infolist_next(infolist):
+        message = w.infolist_string(infolist, 'message')
+        prefix = w.infolist_string(infolist, 'prefix')
+        if exact:
+            for match in matcher.findall(message):
+                matching_lines.append((
+                    w.infolist_time(infolist, 'date'),
+                    w.infolist_string(infolist, 'prefix'),
+                    match
+                    ))
+        else:
+            if matcher.search(message) or matcher.search(prefix):
+                matching_lines.append((
+                    w.infolist_time(infolist, 'date'),
+                    w.infolist_string(infolist, 'prefix'),
+                    w.infolist_string(infolist, 'message'),
+                    ))
+
+    w.infolist_free(infolist)
+
+    return matching_lines
+
+def get_matching_lines(buffer, matcher, exact):
+    ''' if exact is True only return the exact match '''
+
     matching_lines = []
     logfilename = get_logfilename(buffer)
     if logfilename:
         with file(logfilename, 'r') as f:
             for line in f:
-                if matcher.search(line):
-                    matching_lines.append(line.split('\t'))
+                if exact:
+                    for match in matcher.findall(line):
+                        time, prefix = line.split('\t')[0], line.split('\t')[1]
+                        matching_lines.append((time, prefix, match))
+                else:
+                    if matcher.findall(line):
+                        matching_lines.append(line.split('\t'))
     else:
-        matching_lines = find_infolist_matching_lines(buffer, matcher)
+        matching_lines = find_infolist_matching_lines(buffer, matcher, exact)
 
     return matching_lines
 
@@ -156,11 +173,15 @@ def grep_cmd(data, buffer, args):
 
     matching_lines = []
 
+    exact = False 
+    if '--exact' in opts:
+        exact = True
+
     if '--all' in opts:
         for buffer in get_all_buffers():
-            matching_lines += get_matching_lines(buffer, matcher)
+            matching_lines += get_matching_lines(buffer, matcher, exact)
     else:
-        matching_lines += get_matching_lines(buffer, matcher)
+        matching_lines += get_matching_lines(buffer, matcher, exact)
 
 
     update_buffer(matching_lines, pattern)
