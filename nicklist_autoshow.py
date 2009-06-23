@@ -19,6 +19,8 @@
 # (this script requires WeeChat 0.3.0 or newer)
 #
 # History:
+# 2009-06-23, xt
+#     version 0.2: use better check if buffer has nicklist
 # 2009-06-22, xt <xt@bash.no>
 #     version 0.1: initial release
 
@@ -26,7 +28,7 @@ import weechat as w
 
 SCRIPT_NAME    = "nicklist_autoshow"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "0.1"
+SCRIPT_VERSION = "0.2"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Auto show and hide nicklist depending on channel name"
 
