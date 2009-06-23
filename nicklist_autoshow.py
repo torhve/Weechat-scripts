@@ -20,6 +20,8 @@
 #
 # History:
 # 2009-06-23, xt
+#     version 0.3: use hiding/showing instead of disabling nicklist
+# 2009-06-23, xt
 #     version 0.2: use better check if buffer has nicklist
 # 2009-06-22, xt <xt@bash.no>
 #     version 0.1: initial release
@@ -28,7 +30,7 @@ import weechat as w
 
 SCRIPT_NAME    = "nicklist_autoshow"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "0.2"
+SCRIPT_VERSION = "0.3"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Auto show and hide nicklist depending on channel name"
 
@@ -52,6 +54,7 @@ def check_nicklist_cb(data, signal, signal_data):
     if counter == 1: # Means the buffer does not have an nicklist
         return w.WEECHAT_RC_OK
 
+    #w.command(current_buffer, '/buffer set nicklist 1')
 
     current_buffer_name = w.buffer_get_string(current_buffer, 'name')
     display_channels = w.config_get_plugin('display_channels')
@@ -60,18 +63,22 @@ def check_nicklist_cb(data, signal, signal_data):
     if display_channels:
         for buffer_name in display_channels.split(','):
             if unicode(current_buffer_name) == unicode(buffer_name):
-                w.command(current_buffer, '/buffer set nicklist 1')
+                #w.command(current_buffer, '/buffer set nicklist 1')
+                w.command(current_buffer, '/bar show nicklist')
                 break
         else:
-            w.command(current_buffer, '/buffer set nicklist 0')
+            #w.command(current_buffer, '/buffer set nicklist 0')
+            w.command(current_buffer, '/bar hide nicklist')
     else:
         if hide_channels:
             for buffer_name in hide_channels.split(','):
                 if unicode(current_buffer_name) == unicode(buffer_name):
-                    w.command(current_buffer, '/buffer set nicklist 0')
+                    #w.command(current_buffer, '/buffer set nicklist 0')
+                    w.command(current_buffer, '/bar hide nicklist')
                     break
             else:
-                w.command(current_buffer, '/buffer set nicklist 1')
+                #w.command(current_buffer, '/buffer set nicklist 1')
+                w.command(current_buffer, '/bar show nicklist')
 
     return w.WEECHAT_RC_OK
 
