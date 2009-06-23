@@ -39,6 +39,18 @@ def check_nicklist_cb(data, signal, signal_data):
     ''' The callback that checks if nicklist should be displayed '''
 
     current_buffer = w.current_buffer()
+
+    # Check if current buffer has a nicklist
+    infolist = w.infolist_get('nicklist', current_buffer, '')
+    counter = 0
+    while w.infolist_next(infolist):
+        counter += 1
+    w.infolist_free(infolist)
+
+    if counter == 1: # Means the buffer does not have an nicklist
+        return w.WEECHAT_RC_OK
+
+
     current_buffer_name = w.buffer_get_string(current_buffer, 'name')
     display_channels = w.config_get_plugin('display_channels')
     hide_channels = w.config_get_plugin('hide_channels')
@@ -49,9 +61,7 @@ def check_nicklist_cb(data, signal, signal_data):
                 w.command(current_buffer, '/buffer set nicklist 1')
                 break
         else:
-            channel = w.buffer_get_string(current_buffer, "localvar_channel")
-            if w.info_get("irc_is_channel", channel) == "1":
-                w.command(current_buffer, '/buffer set nicklist 0')
+            w.command(current_buffer, '/buffer set nicklist 0')
     else:
         if hide_channels:
             for buffer_name in hide_channels.split(','):
@@ -59,9 +69,7 @@ def check_nicklist_cb(data, signal, signal_data):
                     w.command(current_buffer, '/buffer set nicklist 0')
                     break
             else:
-                channel = w.buffer_get_string(current_buffer, "localvar_channel")
-                if w.info_get("irc_is_channel", channel) == "1":
-                    w.command(current_buffer, '/buffer set nicklist 1')
+                w.command(current_buffer, '/buffer set nicklist 1')
 
     return w.WEECHAT_RC_OK
 
