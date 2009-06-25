@@ -207,11 +207,14 @@ def update_buffer(matching_lines, pattern):
     w.buffer_clear(search_buffer)
 
     w.buffer_set(search_buffer, "title", "Search '%s' matched %s lines" % (pattern, len(matching_lines) ))
-
+    prefix_suffix_color = w.config_string(w.config_get('weechat.color.chat_prefix_suffix'))
+    prefix_suffix = w.color(prefix_suffix_color) + \
+            w.config_string(w.config_get('weechat.look.prefix_suffix'))
     for line in matching_lines:
-        w.prnt(search_buffer, '%s\t%s %s %s' % (\
+        w.prnt(search_buffer, '%s\t%s  %s %s %s' % (\
             line[0],
             irc_nick_find_color(line[1]),
+            prefix_suffix,
             w.color('reset'),
             line[2]))
 
