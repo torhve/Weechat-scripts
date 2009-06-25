@@ -129,4 +129,4 @@ if __name__ == "__main__":
             if not weechat.config_is_set_plugin(option):
                 weechat.config_set_plugin(option, default_value)
 
-        weechat.hook_print("", "", "spotify:", 1, "spotify_print_cb", "")
+        weechat.hook_print("", "", "spotify", 1, "spotify_print_cb", "")
