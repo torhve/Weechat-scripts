@@ -21,7 +21,9 @@
 # (this script requires WeeChat 0.3.0 or newer)
 #
 # History:
-# 2005-05-22, xt <xt@bash.no>
+# 2009-07-01, xt <xt@bash.no>
+#     version 0.5: changed script command to /urlbar
+# 2009-05-22, xt <xt@bash.no>
 #     version 0.4: added configurable showing of buffer name, nick and time
 # 2009-05-21, xt <xt@bash.no>
 #     version 0.3: bug fixes, add ignore feature from sleo
@@ -36,8 +38,7 @@ SCRIPT_AUTHOR  = "FlashCode <flashcode@flashtux.org>"
 SCRIPT_VERSION = "0.4"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Bar with URLs. For easy clicking or selecting."
-
-SCRIPT_COMMAND = "url"
+SCRIPT_COMMAND = "urlbar"
 
 settings = {
     "visible_amount"        : '5',     # Amount of URLS visible in urlbar at any given time
