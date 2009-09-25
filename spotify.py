@@ -17,8 +17,11 @@
 #
 
 #
-# Bar with URLs (easy click on long URLs)
-# (this script requires WeeChat 0.3.0 or newer)
+#
+# If someone posts a spotify track URL in a configured channel
+# this script will post back which track it is using spotify.url.fi service
+
+# 
 #
 # History:
 # 2009-09-25, xt
