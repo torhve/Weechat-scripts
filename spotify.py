@@ -21,6 +21,8 @@
 # (this script requires WeeChat 0.3.0 or newer)
 #
 # History:
+# 2009-09-25, xt
+#   version 0.2: use spotify.url.fi
 # 2009-06-19, xt <xt@bash.no>
 #     version 0.1: initial
 #
@@ -32,21 +34,19 @@ import urllib2
 
 SCRIPT_NAME    = "spotify"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "0.1"
+SCRIPT_VERSION = "0.2"
 SCRIPT_LICENSE = "GPL"
 SCRIPT_DESC    = "Look up spotify urls"
 
 settings = {
-    "buffers"        : 'xt`,',     # comma separated list of buffers
-    "gateway"        : '',         # http spotify gw address
+    "buffers"        : 'freenode.#mychan,',     # comma separated list of buffers
+    "gateway"        : 'http://spotify.url.fi/track/',  # http spotify gw address
 }
 
 
 spotify_track_res = ( re.compile(r'spotify:track:(?P<track_id>\w{22})'),
             re.compile(r'http://open.spotify.com/track/(?P<track_id>\w{22})') )
 
-
-cache = {}
 
 spotify_hook_process = ''
 buffer_name = ''
@@ -65,12 +65,12 @@ def printReply(buffer_name, reply):
 def get_spotify_ids(s):
     for r in spotify_track_res:
         for track in r.findall(s):
-            yield "spotify:track:" + track
+            yield track
 
 
 def spotify_print_cb(data, buffer, time, tags, displayed, highlight, prefix, message):
 
-    global spotify_hook_process, buffer_name, cache
+    global spotify_hook_process, buffer_name
 
     msg_buffer_name = get_buffer_name(buffer)
     # Skip ignored buffers
@@ -86,11 +86,7 @@ def spotify_print_cb(data, buffer, time, tags, displayed, highlight, prefix, mes
 
        
     for spotify_id in get_spotify_ids(message):
-        if spotify_id in cache:
-            printReply(buffer_name, cache[spotify_id])
-            return weechat.WEECHAT_RC_OK
-
-        url = w.config_get_plugin('gateway') + spotify_id
+        url = w.config_get_plugin('gateway') + spotify_id + '?txt'
         if spotify_hook_process != "":
             weechat.unhook(spotify_hook_process)
             spotify_hook_process = ""
@@ -109,11 +105,8 @@ def spotify_process_cb(data, command, rc, stdout, stderr):
 
     #if int(rc) >= 0:
     reply = stdout
-    spotify_id = reply[:36]
-    reply = reply[37:] # strip spotify url
     reply = reply.strip()
     if reply:
-        cache[spotify_id] = reply
         printReply(buffer_name, reply)
 
     return weechat.WEECHAT_RC_OK
