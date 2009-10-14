@@ -89,14 +89,23 @@ def bandwidth_item_cb(data, buffer, args):
     if not last_i or not last_o:
         return ''
 
-    unit = ''
+    i_unit = ''
+    o_unit = ''
     if weechat.config_get_plugin('display_unit') == 'on':
-        unit = 'KiB/s'
+        i_unit = 'KiB/s'
+        o_unit = 'KiB/s'
+        if i > 1023:
+            i = i/1024
+            i_unit = 'MiB/s'
+        if o > 1023:
+            o = o/1024
+            o_unit = 'MiB/s'
 
-    return "i: %(in)d %(unit)s, o: %(out)d %(unit)s" %{
+    return "i: %(in)d %(i_unit)s, o: %(out)d %(o_unit)s" %{
             'in': i,
             'out': o,
-            'unit': unit,
+            'i_unit': i_unit,
+            'o_unit': o_unit,
             }
 
 if __name__ == "__main__" and import_ok:
