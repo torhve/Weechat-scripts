@@ -48,6 +48,7 @@ except:
 bandwidth_settings = {
     "device"                : "eth0",       # Network interface
     "refresh_rate"          : "5",          # in s
+    "display_unit"          : "on",         # on/off
 }
 
 last_i = 0
@@ -88,8 +89,15 @@ def bandwidth_item_cb(data, buffer, args):
     if not last_i or not last_o:
         return ''
 
+    unit = ''
+    if weechat.config_get_plugin('display_unit') == 'on':
+        unit = 'KiB/s'
 
-    return "i: %.2d , o: %.2d" %(i, o)
+    return "i: %(in)d %(unit)s, o: %(out)d %(unit)s" %{
+            'in': i,
+            'out': o,
+            'unit': unit,
+            }
 
 if __name__ == "__main__" and import_ok:
     if weechat.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION,
