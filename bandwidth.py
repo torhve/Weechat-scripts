@@ -32,7 +32,7 @@ SCRIPT_NAME    = "bandwidth"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
 SCRIPT_VERSION = "0.1"
 SCRIPT_LICENSE = "GPL3"
-SCRIPT_DESC    = "TODO"
+SCRIPT_DESC    = "Displays network interface bandwidth on a bar"
 
 import os
 import_ok = True
