@@ -17,7 +17,6 @@
 #
 
 #
-# Set screen title
 # (this script requires WeeChat 0.3.0 or newer)
 #
 # History:
