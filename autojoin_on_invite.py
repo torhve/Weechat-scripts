@@ -34,7 +34,6 @@ SCRIPT_DESC    = "Auto joins channels when invited"
 
 # script options
 settings = {
-        'switch_buffer_on_join': 'on', # Switch to the new channel upon join
 }
 
 
@@ -53,7 +52,5 @@ def invite_cb(data, signal, signal_data):
     channel = signal_data.split(':')[-1] # :nick!ident@host.name INVITE yournick :#channel
     w.command(w.buffer_search('irc', 'server'), '/join %s' %channel)
     w.prnt('', 'Automatically joining %s on server %s' %(channel, server))
-    if w.config_get_plugin('switch_buffer_on_join') == 'on':
-        w.command('', '/buffer %s' %channel)
 
     return w.WEECHAT_RC_OK
