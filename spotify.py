@@ -131,6 +131,10 @@ def spotify_process_cb(data, command, rc, stdout, stderr):
             artist_name = soup.find('artist').find('name').string
             released = soup.find('released').string
             reply = '%s - %s - %s' %(artist_name, album_name, released)
+        else:
+            # Unsupported lookup type
+            return weechat.WEECHAT_RC_OK
+
 
         reply = reply.replace('&amp;', '&')
         reply = reply.encode('UTF-8')
