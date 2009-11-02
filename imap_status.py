@@ -36,7 +36,7 @@ import re
 
 SCRIPT_NAME    = "imap_status"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "0.1"
+SCRIPT_VERSION = "0.2"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Bar item with unread imap messages count"
 
