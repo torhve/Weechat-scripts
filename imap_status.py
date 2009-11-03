@@ -3,7 +3,8 @@
 # (this script requires WeeChat 0.3.0 or newer)
 #
 # History:
-#
+# 2009-11-03, xt
+#   version 0.3: multiple mailbox support
 # 2009-11-02, xt
 #   version 0.2: remove the imap "client" buffer, just do the unread count
 # 2009-06-18, xt <xt@bash.no>
@@ -36,7 +37,7 @@ import re
 
 SCRIPT_NAME    = "imap_status"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "0.2"
+SCRIPT_VERSION = "0.3"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Bar item with unread imap messages count"
 
@@ -101,6 +102,7 @@ def imap_cb(*kwargs):
     any_with_unread = False
     mailboxes = w.config_get_plugin('mailboxes').split(',')
     for mailbox in mailboxes:
+        mailbox = mailbox.strip()
         unreadCount = imap.unreadCount(mailbox)
         if unreadCount > 0:
             any_with_unread = True
