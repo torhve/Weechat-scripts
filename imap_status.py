@@ -46,7 +46,7 @@ settings = {
     "password"          : '',
     "hostname"          : '',
     "port"              : '993',
-    'mailbox'           : 'INBOX',
+    'mailboxes'         : 'INBOX', #comma separated list of mailboxes
     'message'           : 'Mail: ',
     'message_color'     : 'default',
     'count_color'       : 'default',
@@ -94,16 +94,26 @@ def imap_cb(*kwargs):
     ''' Callback for the bar item with unread count '''
 
     imap = Imap()
-    unreadCount = imap.unreadCount(w.config_get_plugin('mailbox'))
-    imap.logout()
 
-    if not unreadCount == 0:
-        return '%s%s%s%s%s' % (\
+    output = '%s%s: ' % (\
              w.color(w.config_get_plugin('message_color')),
-             w.config_get_plugin('message'),
-             w.color(w.config_get_plugin('count_color')),
-             unreadCount,
-             w.color('reset'))
+             w.config_get_plugin('message'))
+    any_with_unread = False
+    mailboxes = w.config_get_plugin('mailboxes').split(',')
+    for mailbox in mailboxes:
+        unreadCount = imap.unreadCount(mailbox)
+        if unreadCount > 0:
+            any_with_unread = True
+            output += '%s%s: %s%s ' %(w.color(w.config_get_plugin('message_color')),
+                mailbox,
+                w.color(w.config_get_plugin('count_color')),
+                unreadCount)
+    imap.logout()
+    output += w.color('reset')
+
+    if any_with_unread:
+        return output
+
     return ''
 
 def imap_update(*kwargs):
