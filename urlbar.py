@@ -108,7 +108,7 @@ def urlbar_item_cb(data, item, window):
             result += '%s%2d%s %s \r' %\
                 (weechat.color("yellow"), index, weechat.color("bar_fg"), url)
         else:
-            result += '%s%s' %(weechat.color('bar_fg'), url)
+            result += '%s%s \r' %(weechat.color('bar_fg'), url)
     return result
 
 
