@@ -32,7 +32,7 @@ import re
 
 SCRIPT_NAME    = "autojoin_on_invite"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "0.2"
+SCRIPT_VERSION = "0.3"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Auto joins channels when invited"
 
