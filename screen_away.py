@@ -91,6 +91,7 @@ def get_servers():
                w.infolist_string(infolist, 'away_message') == \
                w.config_get_plugin('message'):
             buffers.append(w.infolist_pointer(infolist, 'buffer'))
+    w.infolist_free(infolist)
     return buffers
 
 
