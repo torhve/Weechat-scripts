@@ -63,6 +63,7 @@ def get_all_buffers():
     return buffers
 
 def get_last_line_date(buffer):
+    date = '1970-01-01 01:00:00'
     infolist = w.infolist_get('buffer_lines', buffer, '')
     while w.infolist_prev(infolist):
         date = w.infolist_time(infolist, 'date')
@@ -94,6 +95,12 @@ def close_time_cb(buffer, args):
 
 
     for buffer in get_all_buffers():
+        if buffer == w.current_buffer():
+            # Never close current buffer
+            continue
+        if len(w.buffer_get_string(buffer, 'input')):
+            # Don't close buffers with text on input line
+            continue
         name = w.buffer_get_string(buffer, 'name')
         date = get_last_line_date(buffer)
         date = time.mktime(time.strptime(date, '%Y-%m-%d %H:%M:%S'))
