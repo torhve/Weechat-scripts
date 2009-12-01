@@ -26,7 +26,7 @@
 import weechat as w
 import time
 
-SCRIPT_NAME    = "auto_buffer_close"
+SCRIPT_NAME    = "buffer_autoclose"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
 SCRIPT_VERSION = "0.1"
 SCRIPT_LICENSE = "GPL3"
