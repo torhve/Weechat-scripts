@@ -119,7 +119,9 @@ def spotify_process_cb(data, command, rc, stdout, stderr):
             name = soup.find('name').string
             album_name = soup.find('album').find('name').string
             artist_name = soup.find('artist').find('name').string
-            popularity = float(soup.find('popularity').string)*100
+            popularity = soup.find('popularity')
+            if popularity:
+                popularity = float(popularity.string)*100
             length = float(soup.find('length').string)
             minutes = int(length)/60
             seconds =  int(length)%60
