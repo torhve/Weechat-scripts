@@ -96,6 +96,8 @@ def close_time_cb(buffer, args):
     ''' Callback for check for inactivity and close '''
 
     for buffer in get_all_buffers():
+        name = w.buffer_get_string(buffer, 'name')
+
         if buffer == w.current_buffer():
             # Never close current buffer
             w.prnt('', '%s: Not closing buffer: %s: it is in currently active' %(SCRIPT_NAME, name))
@@ -104,7 +106,7 @@ def close_time_cb(buffer, args):
             # Don't close buffers with text on input line
             w.prnt('', '%s: Not closing buffer: %s: it has input' %(SCRIPT_NAME, name))
             continue
-        name = w.buffer_get_string(buffer, 'name')
+
         date = get_last_line_date(buffer)
         date = time.mktime(time.strptime(date, '%Y-%m-%d %H:%M:%S'))
         now = time.time()
