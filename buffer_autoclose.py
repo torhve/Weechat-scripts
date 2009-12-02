@@ -21,6 +21,8 @@
 #
 # History:
 # 2009-12-02, xt
+#  version 0.3: moved around some control structures to not be as noisy
+# 2009-12-02, xt
 #  version 0.2: bugfix, more printing
 # 2009-12-01, xt <xt@bash.no>
 #  version 0.1: initial release
@@ -30,7 +32,7 @@ import time
 
 SCRIPT_NAME    = "buffer_autoclose"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "0.2"
+SCRIPT_VERSION = "0.3"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Automatically close inactive private message buffers"
 
@@ -98,14 +100,6 @@ def close_time_cb(buffer, args):
     for buffer in get_all_buffers():
         name = w.buffer_get_string(buffer, 'name')
 
-        if buffer == w.current_buffer():
-            # Never close current buffer
-            w.prnt('', '%s: Not closing buffer: %s: it is in currently active' %(SCRIPT_NAME, name))
-            continue
-        if len(w.buffer_get_string(buffer, 'input')):
-            # Don't close buffers with text on input line
-            w.prnt('', '%s: Not closing buffer: %s: it has input' %(SCRIPT_NAME, name))
-            continue
 
         date = get_last_line_date(buffer)
         date = time.mktime(time.strptime(date, '%Y-%m-%d %H:%M:%S'))
@@ -117,6 +111,14 @@ def close_time_cb(buffer, args):
                 continue
             if name in w.config_get_plugin('ignore').split(','):
                 w.prnt('', '%s: Not closing buffer: %s: it is in ignore list' %(SCRIPT_NAME, name))
+                continue
+            if buffer == w.current_buffer():
+                # Never close current buffer
+                w.prnt('', '%s: Not closing buffer: %s: it is in currently active' %(SCRIPT_NAME, name))
+                continue
+            if len(w.buffer_get_string(buffer, 'input')):
+                # Don't close buffers with text on input line
+                w.prnt('', '%s: Not closing buffer: %s: it has input' %(SCRIPT_NAME, name))
                 continue
                 
             w.prnt('', '%s: Closing buffer: %s' %(SCRIPT_NAME, name))
