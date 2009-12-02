@@ -24,6 +24,8 @@
 # 
 #
 # History:
+# 2009-12-02, xt
+#   version 0.4 small bugfix with some songs and popularity
 # 2009-10-29, xt
 #   version 0.3 use official spotify API, and add support for albums
 # 2009-09-25, xt
@@ -39,7 +41,7 @@ import urllib2
 
 SCRIPT_NAME    = "spotify"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "0.3"
+SCRIPT_VERSION = "0.4"
 SCRIPT_LICENSE = "GPL"
 SCRIPT_DESC    = "Look up spotify urls"
 
