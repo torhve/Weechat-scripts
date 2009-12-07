@@ -42,12 +42,6 @@ SCRIPT_VERSION = "0.2"
 SCRIPT_LICENSE = "GPL"
 SCRIPT_DESC    = "Look up URL title"
 
-import_ok = True
-#try:
-#except:
-#    print "Package python-beautifulsoup must be installed for script '%s'." % SCRIPT_NAME
-#    import_ok = False
-
 settings = {
     "buffers"        : 'freenode.#mychan,',     # comma separated list of buffers
     'title_max_length': '100',
@@ -70,7 +64,7 @@ url_stdout = ''
 urls = {}
 
 def get_buffer_name(bufferp):
-    bufferd = weechat.buffer_get_string(bufferp, "name")
+    bufferd = w.buffer_get_string(bufferp, "name")
     return bufferd
 
 def unescape(s):
@@ -87,14 +81,14 @@ def url_print_cb(data, buffer, time, tags, displayed, highlight, prefix, message
     msg_buffer_name = get_buffer_name(buffer)
     # Skip ignored buffers
     found = False
-    for active_buffer in weechat.config_get_plugin('buffers').split(','):
+    for active_buffer in w.config_get_plugin('buffers').split(','):
         if active_buffer.lower() == msg_buffer_name.lower():
             found = True
             buffer_name = msg_buffer_name
             break
 
     if not found:
-        return weechat.WEECHAT_RC_OK
+        return w.WEECHAT_RC_OK
 
     ignorelist = w.config_get_plugin('url_ignore').split(',')
     for url in urlRe.findall(message):
@@ -117,15 +111,15 @@ def url_print_cb(data, buffer, time, tags, displayed, highlight, prefix, message
             urls[url] = now()
 
         if url_hook_process != "":
-            weechat.unhook(url_hook_process)
+            w.unhook(url_hook_process)
             url_hook_process = ""
         url_stdout = ""
         # Read 8192
-        url_hook_process = weechat.hook_process(
+        url_hook_process = w.hook_process(
             "python -c \"import urllib2; print urllib2.urlopen('" + url + "').read(8192)\"",
             30 * 1000, "url_process_cb", "")
 
-    return weechat.WEECHAT_RC_OK
+    return w.WEECHAT_RC_OK
 
 def url_process_cb(data, command, rc, stdout, stderr):
     """ Callback parsing html for title """
@@ -153,7 +147,7 @@ def url_process_cb(data, command, rc, stdout, stderr):
             w.prnt('', '%s: Title: %s' %(SCRIPT_NAME, title))
 
         url_hook_process = ''
-    return weechat.WEECHAT_RC_OK
+    return w.WEECHAT_RC_OK
 
 def purge_cb(*args):
     ''' Purge the url list on configured intervals '''
@@ -169,15 +163,15 @@ def purge_cb(*args):
     return w.WEECHAT_RC_OK
 
 
-if __name__ == "__main__" and import_ok:
-    if weechat.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
+if __name__ == "__main__":
+    if w.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
                         SCRIPT_DESC, "", ""):
         # Set default settings
         for option, default_value in settings.iteritems():
-            if not weechat.config_is_set_plugin(option):
-                weechat.config_set_plugin(option, default_value)
+            if not w.config_is_set_plugin(option):
+                w.config_set_plugin(option, default_value)
 
-        weechat.hook_print("", "", "://", 1, "url_print_cb", "")
+        w.hook_print("", "", "://", 1, "url_print_cb", "")
         w.hook_timer(\
             int(w.config_get_plugin('reannounce_wait')) * 1000 * 60,
             0,
