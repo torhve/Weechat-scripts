@@ -27,6 +27,7 @@
 # History:
 # 2009-12-07, xt <xt@bash.no>
 #   version 0.2: don't renannounce same urls for a time
+#                add optional prefix and suffix
 # 2009-12-02, xt
 #   version 0.1: initial
 
@@ -47,6 +48,8 @@ settings = {
     'title_max_length': '100',
     'url_ignore'     : '', # comma separated list of strings in url to ignore
     'reannounce_wait': '5', # 5 minutes delay
+    'prefix':   '',
+    'suffix':   '',
 }
 
 
@@ -143,8 +146,9 @@ def url_process_cb(data, command, rc, stdout, stderr):
             splits = buffer_name.split('.') #FIXME bad code
             server = splits[0]
             buffer = '.'.join(splits[1:])
-            w.command('', '/msg -server %s %s %s' %(server, buffer, title))
-            w.prnt('', '%s: Title: %s' %(SCRIPT_NAME, title))
+            output = w.config_get_plugin('prefix') + title + w.config_get_plugin('suffix')
+            w.command('', '/msg -server %s %s %s' %(server, buffer, output))
+            #w.prnt('', '%s: Title: %s' %(SCRIPT_NAME, title))
 
         url_hook_process = ''
     return w.WEECHAT_RC_OK
