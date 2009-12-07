@@ -25,6 +25,8 @@
 # 
 #
 # History:
+# 2009-12-07, xt <xt@bash.no>
+#   version 0.2: don't renannounce same urls for a time
 # 2009-12-02, xt
 #   version 0.1: initial
 
@@ -32,10 +34,11 @@ import weechat
 w = weechat
 import re
 import htmllib
+from time import time as now
 
 SCRIPT_NAME    = "announce_url_title"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "0.1"
+SCRIPT_VERSION = "0.2"
 SCRIPT_LICENSE = "GPL"
 SCRIPT_DESC    = "Look up URL title"
 
@@ -49,6 +52,7 @@ settings = {
     "buffers"        : 'freenode.#mychan,',     # comma separated list of buffers
     'title_max_length': '100',
     'url_ignore'     : '', # comma separated list of strings in url to ignore
+    'reannounce_wait': '5', # 5 minutes delay
 }
 
 
@@ -63,6 +67,7 @@ url_hook_process = ''
 buffer_name = ''
 url_stdout = ''
 
+urls = {}
 
 def get_buffer_name(bufferp):
     bufferd = weechat.buffer_get_string(bufferp, "name")
@@ -77,7 +82,7 @@ def unescape(s):
 
 def url_print_cb(data, buffer, time, tags, displayed, highlight, prefix, message):
 
-    global url_hook_process, buffer_name, url_stdout
+    global url_hook_process, buffer_name, url_stdout, urls
 
     msg_buffer_name = get_buffer_name(buffer)
     # Skip ignored buffers
@@ -94,6 +99,7 @@ def url_print_cb(data, buffer, time, tags, displayed, highlight, prefix, message
     ignorelist = w.config_get_plugin('url_ignore').split(',')
     for url in urlRe.findall(message):
 
+
         ignore = False
         for ignore_part in ignorelist:
             if ignore_part.strip():
@@ -104,6 +110,11 @@ def url_print_cb(data, buffer, time, tags, displayed, highlight, prefix, message
                 
         if ignore:
             continue
+
+        if url in urls:
+            continue
+        else:
+            urls[url] = now()
 
         if url_hook_process != "":
             weechat.unhook(url_hook_process)
@@ -144,7 +155,18 @@ def url_process_cb(data, command, rc, stdout, stderr):
         url_hook_process = ''
     return weechat.WEECHAT_RC_OK
 
+def purge_cb(*args):
+    ''' Purge the url list on configured intervals '''
 
+    global urls
+    
+    now = now()
+    for url, saved_time in urls.iteritems():
+        if (now - saved_time) > \
+            int(w.config_get_plugin('reannounce_wait'))*60:
+                del urls[url]
+
+    return w.WEECHAT_RC_OK
 
 
 if __name__ == "__main__" and import_ok:
@@ -156,3 +178,9 @@ if __name__ == "__main__" and import_ok:
                 weechat.config_set_plugin(option, default_value)
 
         weechat.hook_print("", "", "://", 1, "url_print_cb", "")
+        w.hook_timer(\
+            int(w.config_get_plugin('reannounce_wait')) * 1000 * 60,
+            0,
+            0,
+            "purge_cb",
+            '')
