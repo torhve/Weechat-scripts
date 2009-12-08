@@ -25,6 +25,8 @@
 # 
 #
 # History:
+# 2009-12-08, xt
+#   version 0.3: option for public announcing or not
 # 2009-12-07, xt <xt@bash.no>
 #   version 0.2: don't renannounce same urls for a time
 #                add optional prefix and suffix
@@ -39,7 +41,7 @@ from time import time as now
 
 SCRIPT_NAME    = "announce_url_title"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "0.2"
+SCRIPT_VERSION = "0.3"
 SCRIPT_LICENSE = "GPL"
 SCRIPT_DESC    = "Look up URL title"
 
@@ -50,6 +52,7 @@ settings = {
     'reannounce_wait': '5', # 5 minutes delay
     'prefix':   '',
     'suffix':   '',
+    'announce_public': 'off', # print it or msg the buffer
 }
 
 
@@ -147,8 +150,11 @@ def url_process_cb(data, command, rc, stdout, stderr):
             server = splits[0]
             buffer = '.'.join(splits[1:])
             output = w.config_get_plugin('prefix') + title + w.config_get_plugin('suffix')
-            w.command('', '/msg -server %s %s %s' %(server, buffer, output))
-            #w.prnt('', '%s: Title: %s' %(SCRIPT_NAME, title))
+            announce_public = w.config_get_plugin('announce_public')
+            if announce_public == 'on':
+                w.command('', '/msg -server %s %s %s' %(server, buffer, output))
+            elif announce_public == 'off':
+                w.prnt(w.buffer_search('', buffer_name), output)
 
         url_hook_process = ''
     return w.WEECHAT_RC_OK
@@ -158,9 +164,9 @@ def purge_cb(*args):
 
     global urls
     
-    now = now()
-    for url, saved_time in urls.iteritems():
-        if (now - saved_time) > \
+    t_now = now()
+    for url in urls.keys():
+        if (t_now - urls[url]) > \
             int(w.config_get_plugin('reannounce_wait'))*60:
                 del urls[url]
 
