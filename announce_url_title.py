@@ -25,6 +25,10 @@
 # 
 #
 # History:
+# 2009-12-08, Chaz6
+#   version 0.5: only announce for specified channels
+# 2009-12-08, Chaz6 <chaz@chaz6.com>
+#   version 0.4: add global option
 # 2009-12-08, xt
 #   version 0.3: option for public announcing or not
 # 2009-12-07, xt <xt@bash.no>
@@ -41,18 +45,19 @@ from time import time as now
 
 SCRIPT_NAME    = "announce_url_title"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "0.3"
+SCRIPT_VERSION = "0.5"
 SCRIPT_LICENSE = "GPL"
 SCRIPT_DESC    = "Look up URL title"
 
 settings = {
-    "buffers"        : 'freenode.#mychan,',     # comma separated list of buffers
+    "buffers"        : 'freenode.#testing,',     # comma separated list of buffers
     'title_max_length': '100',
     'url_ignore'     : '', # comma separated list of strings in url to ignore
     'reannounce_wait': '5', # 5 minutes delay
     'prefix':   '',
     'suffix':   '',
     'announce_public': 'off', # print it or msg the buffer
+    'global': 'off', # whether to enable for all buffers
 }
 
 
@@ -87,11 +92,15 @@ def url_print_cb(data, buffer, time, tags, displayed, highlight, prefix, message
     msg_buffer_name = get_buffer_name(buffer)
     # Skip ignored buffers
     found = False
-    for active_buffer in w.config_get_plugin('buffers').split(','):
-        if active_buffer.lower() == msg_buffer_name.lower():
-            found = True
-            buffer_name = msg_buffer_name
-            break
+    if w.config_get_plugin('global') == 'on':
+        found = True
+        buffer_name = msg_buffer_name
+    else:
+        for active_buffer in w.config_get_plugin('buffers').split(','):
+            if active_buffer.lower() == msg_buffer_name.lower():
+                found = True
+                buffer_name = msg_buffer_name
+                break
 
     if not found:
         return w.WEECHAT_RC_OK
@@ -152,9 +161,15 @@ def url_process_cb(data, command, rc, stdout, stderr):
             output = w.config_get_plugin('prefix') + title + w.config_get_plugin('suffix')
             announce_public = w.config_get_plugin('announce_public')
             if announce_public == 'on':
-                w.command('', '/msg -server %s %s %s' %(server, buffer, output))
-            elif announce_public == 'off':
-                w.prnt(w.buffer_search('', buffer_name), output)
+                found = False
+                for active_buffer in w.config_get_plugin('buffers').split(','):
+                    if active_buffer.lower() == buffer_name.lower():
+                        w.command('', '/msg -server %s %s %s' %(server, buffer, output))
+                        found = True
+                if found == False:
+                    w.prnt(w.buffer_search('', buffer_name), 'URL title\t' +output)
+            else:
+                w.prnt(w.buffer_search('', buffer_name), 'URL title\t' +output)
 
         url_hook_process = ''
     return w.WEECHAT_RC_OK
