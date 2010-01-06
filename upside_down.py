@@ -20,6 +20,8 @@
 # (this script requires WeeChat 0.3.0 or newer)
 #
 # History:
+# 2010-01-06, xt <xt@bash.no>
+#   version 0.2: fix idiotic programming
 # 2009-11-12, xt <xt@bash.no>
 #   version 0.1: initial release
 
@@ -28,7 +30,7 @@ import re
 
 SCRIPT_NAME    = "upside_down"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "0.1"
+SCRIPT_VERSION = "0.2"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Replaces text you write with upside down text"
 
@@ -50,16 +52,16 @@ replacements = {
      'n' : u'u',
      'r' : u'\u0279',
      't' : u'\u0287',
-     'p' : 'd',
-     'u' : 'n',
-     'q' : 'b',
+     'p' : u'd',
+     'u' : u'n',
+     'q' : u'b',
      'v' : u'\u028C',
      'w' : u'\u028D',
      'y' : u'\u028E',
      '.' : u'\u02D9',
-     '[' : ']',
-     '(' : ')',
-     '{' : '}',
+     '[' : u']',
+     '(' : u')',
+     '{' : u'}',
      '?' : u'\u00BF',
      '!' : u'\u00A1',
      "\'" :u',',
@@ -90,9 +92,11 @@ if w.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
 def flip_cmd_cb(data, buffer, args):
     ''' Command /flip '''
     translate_input = w.buffer_get_string(w.current_buffer(), "input")
-    for vars, replacement in replacements.iteritems():
-        translate_input = translate_input.replace(vars, replacement)
-
-    translate_input = translate_input.encode('UTF-8')
-    w.buffer_set(w.current_buffer(), 'input', translate_input)
+    outstring = ''
+    for char  in translate_input:
+        if char in replacements:
+            char = replacements[char]
+        outstring += char
+    outstring = outstring.encode('UTF-8')
+    w.buffer_set(w.current_buffer(), 'input', outstring)
     return w.WEECHAT_RC_OK
