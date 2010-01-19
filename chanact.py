@@ -46,7 +46,7 @@ SCRIPT_DESC    = "Hotlist replacement, use names and keybindings instead of numb
 
 # script options
 settings = {
-    "lowest_priority"       : '1',
+    "lowest_priority"       : '0',
     'message'               : 'Act: ',
     'item_length'           : '8',
     'color_default'         : 'default',
