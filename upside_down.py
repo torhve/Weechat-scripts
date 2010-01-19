@@ -36,7 +36,7 @@ import re
 
 SCRIPT_NAME    = "upside_down"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "0.2"
+SCRIPT_VERSION = "0.3"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Replaces text you write with upside down text"
 
