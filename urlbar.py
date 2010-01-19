@@ -22,8 +22,8 @@
 # (this script requires WeeChat 0.3.0 or newer)
 #
 # History:
-# 2009-12-23, xt
-#   version 0.9: strip some flags from prefix for coloring
+# 2009-12-17, FlashCode <flashcode@flashtux.org>
+#     version 0.9: fix option name "show_index" (spaces removed)
 # 2009-12-12, FlashCode <flashcode@flashtux.org>
 #     version 0.8: update WeeChat site
 # 2009-11-05, xt <xt@bash.no>
@@ -58,7 +58,7 @@ settings = {
     "show_timestamp"        : 'on',    # Show timestamp in list
     "show_nick"             : 'on',    # Show nick in list
     "show_buffername"       : 'on',    # Show buffer name in list
-    "show_index     "       : 'on',    # Show url index in list
+    "show_index"            : 'on',    # Show url index in list
     "time_format"           : '%H:%M', # Time format
 }
 
@@ -136,7 +136,6 @@ class URL(object):
                 (weechat.color(weechat.config_string(
                 weechat.config_get('weechat.color.chat_time_delimiters'))),
                 weechat.color('reset')))
-        nick = nick.strip('@+%')
         self.nick = irc_nick_find_color(nick)
 
     def __str__(self):
