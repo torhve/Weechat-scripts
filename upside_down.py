@@ -15,11 +15,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
+#
+#
+# USAGE: Bind a key to command /flip . Then write some text at input line 
+# press your key to transform it to upside down.
 
 #
 # (this script requires WeeChat 0.3.0 or newer)
 #
 # History:
+# 2010-01-14, xt
+#   version 0.3: steal more chars from m4v
 # 2010-01-06, xt <xt@bash.no>
 #   version 0.2: fix idiotic programming
 # 2009-11-12, xt <xt@bash.no>
@@ -37,6 +43,26 @@ SCRIPT_DESC    = "Replaces text you write with upside down text"
 settings = {}
 
 replacements = {
+# Upper case
+    u'A' : u'\N{FOR ALL}',
+    u'B' : u'\N{GREEK SMALL LETTER XI}',
+    u'C' : u'\N{ROMAN NUMERAL REVERSED ONE HUNDRED}',
+    u'D' : u'\N{LEFT HALF BLACK CIRCLE}',
+    u'E' : u'\N{LATIN CAPITAL LETTER REVERSED E}',
+    u'F' : u'\N{TURNED CAPITAL F}',
+    u'G' : u'\N{TURNED SANS-SERIF CAPITAL G}',
+    u'J' : u'\N{LATIN SMALL LETTER LONG S}',
+    u'K' : u'\N{RIGHT NORMAL FACTOR SEMIDIRECT PRODUCT}',
+    u'L' : u'\N{LATIN CAPITAL LETTER TURNED L}',
+    u'M' : u'W',
+    u'N' : u'\N{LATIN LETTER SMALL CAPITAL REVERSED N}',
+    u'P' : u'\N{CYRILLIC CAPITAL LETTER KOMI DE}',
+    u'Q' : u'\N{GREEK CAPITAL LETTER OMICRON WITH TONOS}',
+    u'R' : u'\N{LATIN LETTER SMALL CAPITAL TURNED R}',
+    u'T' : u'\N{UP TACK}',
+    u'U' : u'\N{INTERSECTION}',
+    u'V' : u'\N{LATIN CAPITAL LETTER TURNED V}',
+    u'Y' : u'\N{TURNED SANS-SERIF CAPITAL Y}',
      'a' : u"\u0250",
      'b' : u'q',
      'c' : u"\u0254",
@@ -91,7 +117,9 @@ if w.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
 
 def flip_cmd_cb(data, buffer, args):
     ''' Command /flip '''
-    translate_input = w.buffer_get_string(w.current_buffer(), "input")
+    translate_input = args
+    if not translate_input:
+        translate_input = w.buffer_get_string(w.current_buffer(), "input")
     outstring = ''
     for char  in translate_input:
         if char in replacements:
