@@ -60,6 +60,8 @@ def command_run_input(data, buffer, command):
 
         # Get input contents
         input_s = w.buffer_get_string(buffer, 'input')
+        if input_s.startswith('/') and not input_s.startswith('//'):
+            return w.WEECHAT_RC_OK
         # Transform it 
         input_s = input_s.upper()
         # Spit it out
