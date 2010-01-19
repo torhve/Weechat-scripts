@@ -20,7 +20,7 @@
 # (this script requires WeeChat 0.3.0 or newer)
 #
 # History:
-# 2009-12-02, xt
+# 2009-12-15, xt
 #  version 0.3: moved around some control structures to not be as noisy
 # 2009-12-02, xt
 #  version 0.2: bugfix, more printing
@@ -88,7 +88,6 @@ def is_in_hotlist(buffer):
         if thebuffer == buffer:
             found = True
             name = w.buffer_get_string(thebuffer, 'short_name')
-            w.prnt('', "%s: Found buffer %s in hotlist, not closing" %(SCRIPT_NAME, name))
             break
 
     w.infolist_free(hotlist)
@@ -107,18 +106,18 @@ def close_time_cb(buffer, args):
         seconds_old = now - date
         if seconds_old > int(w.config_get_plugin('age_limit'))*60:
             if is_in_hotlist(buffer):
-                w.prnt('', '%s: Not closing buffer: %s: it is in hotlist' %(SCRIPT_NAME, name))
+                #w.prnt('', '%s: Not closing buffer: %s: it is in hotlist' %(SCRIPT_NAME, name))
                 continue
             if name in w.config_get_plugin('ignore').split(','):
-                w.prnt('', '%s: Not closing buffer: %s: it is in ignore list' %(SCRIPT_NAME, name))
+                #w.prnt('', '%s: Not closing buffer: %s: it is in ignore list' %(SCRIPT_NAME, name))
                 continue
             if buffer == w.current_buffer():
                 # Never close current buffer
-                w.prnt('', '%s: Not closing buffer: %s: it is in currently active' %(SCRIPT_NAME, name))
+                #w.prnt('', '%s: Not closing buffer: %s: it is in currently active' %(SCRIPT_NAME, name))
                 continue
             if len(w.buffer_get_string(buffer, 'input')):
                 # Don't close buffers with text on input line
-                w.prnt('', '%s: Not closing buffer: %s: it has input' %(SCRIPT_NAME, name))
+                #w.prnt('', '%s: Not closing buffer: %s: it has input' %(SCRIPT_NAME, name))
                 continue
                 
             w.prnt('', '%s: Closing buffer: %s' %(SCRIPT_NAME, name))
