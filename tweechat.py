@@ -56,17 +56,16 @@ twitter_lastid           = 0
 api                      = None
 
 
-failwhale = """     FAIL WHALE!
+failwhale = '''     v  v        v
+     |  |  v     |  v
+     | .-, |     |  |
+  .--./ /  |  _.---.| 
+   '-. (__..-"       \\
+      \\          a    |
+       ',.__.   ,__.-'/
+         '--/_.'----'`'''
 
-W     W      W        
-W        W  W     W    
-              '.  W      
-  .-""-._     \ \.--|  
- /       "-..__) .-'   
-|     _         /      
-\\'-.__,   .__.,'       
- `'----'._\--'      
-VVVVVVVVVVVVVVVVVVVVV"""
+
 
 if w.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
                     SCRIPT_DESC, "", ""):
@@ -81,25 +80,24 @@ if w.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
         if not w.config_is_set_plugin(option):
             w.config_set_plugin(option, default_value)
 
+    w.hook_signal('input_text_changed', 'title_cb', '')
     w.hook_timer(int(w.config_get_plugin('refresh_interval'))*1000,
             0,
             0,
             'twitter_sched_cb',
             '')
 
-def print_line(line):
+def print_line(line, timestamp=int(time.time())):
     ''' Print a line in the twitter buffer '''
 
     global twitter_buffer
 
     w.buffer_set(twitter_buffer, "unread", "1")
-    w.prnt_date_tags(twitter_buffer, int(time.time()),"notify_message", line)
+    w.prnt_date_tags(twitter_buffer, timestamp,"notify_message", line)
 
 
 def twitter_display(twitters):
     """ Display twitters in buffer. """
-    global twitter_buffer
-    w.buffer_set(twitter_buffer, "unread", "1")
     separator = "\t"
     for status in reversed(twitters):
         nick = unicode(status.user.screen_name)
@@ -110,13 +108,34 @@ def twitter_display(twitters):
             nick_color = w.color(w.config_string(w.config_get('weechat.color.chat_nick_self')))
 
         text = unicode(status.text)
-        w.prnt_date_tags(twitter_buffer,
-                               status.created_at_in_seconds,
-                               "notify_message",
-                               "%s%s%s%s" % (nick_color,
-                                   nick,
-                                   separator,
-                                   text))
+        print_line( "%s%s%s%s" % (nick_color, nick, separator, text),
+                status.created_at_in_seconds)
+
+
+
+def title_cb(*kwargs):
+    ''' Callback used to set title, used to update char counter '''
+    global twitter_buffer
+
+    if not weechat.current_buffer() == twitter_buffer:
+        return w.WEECHAT_RC_OK
+    title = False
+    input_content = w.buffer_get_string(twitter_buffer, "input")
+    if input_content.startswith('tweet '):
+        length = len(input_content) - 6
+        title = 'Tweet char counter: %s' %length
+    set_title(title)
+
+    return w.WEECHAT_RC_OK
+
+def set_title(new_title=False):
+    global twitter_buffer
+    
+    title = 'Get help with /help twitter'
+    if new_title:
+        title = new_title
+
+    w.buffer_set(twitter_buffer, "title", SCRIPT_NAME + " " + SCRIPT_VERSION + " " + title)
 
 def twitter_buffer_create():
     """ Create twitter buffer. """
@@ -127,9 +146,7 @@ def twitter_buffer_create():
                                         "twitter_buffer_input", "",
                                         "twitter_buffer_close", "")
     if twitter_buffer != "":
-        # Set title
-        w.buffer_set(twitter_buffer, "title", SCRIPT_NAME + " " 
-                + SCRIPT_VERSION + " Get help with /help twitter")
+        set_title()
         w.buffer_set(twitter_buffer, "time_for_each_line", "1")
 
         # Configure logging
@@ -183,20 +200,26 @@ def twitter_buffer_input(data, buffer, input_data):
 
     global api
 
-    if input_data == "q" or input_data == "Q":
-        w.buffer_close(buffer)
-    elif input_data.startswith('tweet'):
-        api.PostUpdate(input_data[5:])
-        twitter_get()
-    elif input_data.startswith('follow'):
-        user = input_data[len('follow')+1:]
-        w.prnt('', user)
-        api.CreateFriendship(user)
-        print_line('-->\tNow following %s' %user)
-    elif input_data.startswith('unfollow'):
-        user = input_data[len('unfollow')+1:]
-        api.DestroyFriendship(user)
-        print_line('<--\tNot following %s anymore' %user)
+    try:
+        if input_data == "q" or input_data == "Q":
+            w.buffer_close(buffer)
+        elif input_data.startswith('tweet'):
+            api.PostUpdate(input_data[5:])
+            twitter_get()
+        elif input_data.startswith('follow'):
+            user = input_data[len('follow')+1:]
+            w.prnt('', user)
+            api.CreateFriendship(user)
+            prefix_color = w.color(w.config_string(w.config_get('weechat.color.chat_prefix_join')))
+            print_line('%s-->%s\tNow following %s' %(prefix_color, w.color('reset'), user))
+        elif input_data.startswith('unfollow'):
+            user = input_data[len('unfollow')+1:]
+            api.DestroyFriendship(user)
+            prefix_color = w.color(w.config_string(w.config_get('weechat.color.chat_prefix_quit')))
+            print_line('%s<--%s\tNot following %s anymore' %(prefix_color, w.color('reset'), user))
+    except Exception, e:
+        w.prnt(twitter_buffer, failwhale)
+        w.prnt(twitter_buffer, '%s: Error: %s' %(SCRIPT_COMMAND, e))
         
     return w.WEECHAT_RC_OK
 
