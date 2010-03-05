@@ -16,11 +16,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-#
-#
-# If someone posts an URL in a configured channel
-# this script will post back title 
-
+# This script colors nicks in IRC channels in the actual message
+# not just in the prefix section.
 # 
 #
 # History:
@@ -29,20 +26,18 @@
 
 import weechat
 import re
-import time
 w = weechat
 
 SCRIPT_NAME    = "colorize_nicks"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
 SCRIPT_VERSION = "0.1"
 SCRIPT_LICENSE = "GPL"
-SCRIPT_DESC    = "Colorize nicks"
+SCRIPT_DESC    = "Use the weechat nick colors in the chat area"
 
 settings = {
-    "whitelist_channels"        : '',     # comma separated list of channels
-    "blacklist_channels"        : '',     # comma separated list of channels
-    "blacklist_nicks"           : '',     # comma separated list of nicks
-    "min_nick_length"           : '',     # length
+    "blacklist_channels"        : '',     # comma separated list of channels (use short_name)
+    "blacklist_nicks"           : 'so,root',  # comma separated list of nicks
+    "min_nick_length"           : '2',    # length
 }
 
 
@@ -58,42 +53,68 @@ PREFIX_COLORS = {
 ignore_channels = []
 ignore_nicks = []
 
+# Dict with every nick on every channel with its color as lookup value
 colored_nicks = {}
 
 def colorize_cb(data, modifier, modifier_data, line):
+    ''' Callback that does the colorizing, and returns new line if changed '''
 
     global ignore_nicks, ignore_channels, colored_nicks
     if not 'irc_privmsg' in modifier_data:
         return line
 
-    channel = modifier_data.split(';')[1]
-# TODO BLACKLIST CHECK
-#
+    full_name = modifier_data.split(';')[1]
+    server = full_name.split('.')[0]
+    channel = '.'.join(full_name.split('.')[1:])
+    # Check that privmsg is in a channel and that that channel is not ignored
+    if not w.info_get('irc_is_channel', channel) or channel in ignore_channels:
+        return line
+
     min_length = int(w.config_get_plugin('min_nick_length'))
     reset = w.color('reset')
 
-    for words in re.findall(VALID_NICK, line):
-        prefix, nick = words[0], words[1]
-        if len(nick) < min_length:
-            continue
-        if nick in colored_nicks:
-            nick_color = colored_nicks[nick]
-            #nick_color = w.info_get('irc_nick_color', nick)
-            line = line.replace(nick, '%s%s%s' %(nick_color, nick, reset))
+    try:
+        for words in re.findall(VALID_NICK, line):
+            prefix, nick = words[0], words[1]
+            # Check that nick is not ignored and longer than minimum length
+            if len(nick) < min_length or nick in ignore_nicks:
+                continue
+            if nick in colored_nicks[server][channel]:
+                nick_color = colored_nicks[server][channel][nick]
+                line = line.replace(nick, '%s%s%s' %(nick_color, nick, reset))
+    except KeyError, e:
+        print '%s%s' %(e, colored_nicks)
 
     return line
 
 
 def populate_nicks(*kwargs):
+    ''' Fills entire dict with all nicks weechat can see and what color it has
+    assigned to it. '''
+    global colored_nicks
+
+    colored_nicks = {}
+
     servers = w.infolist_get('irc_server', '', '')
     while w.infolist_next(servers):
         servername = w.infolist_string(servers, 'name')
+        colored_nicks[servername] = {}
+        my_nick = w.info_get('irc_nick', servername)
         channels = w.infolist_get('irc_channel', '', servername)
         while w.infolist_next(channels):
             nicklist = w.infolist_get('nicklist', w.infolist_pointer(channels, 'buffer'), '')
+            channelname = w.infolist_string(channels, 'name')
+            colored_nicks[servername][channelname] = {}
             while w.infolist_next(nicklist):
                 nick = w.infolist_string(nicklist, 'name')
-                colored_nicks[nick] = w.info_get('irc_nick_color', nick)
+                if nick == my_nick:
+                    nick_color = w.color(\
+                            w.config_string(\
+                            w.config_get('weechat.color.chat_nick_self')))
+                else:
+                    nick_color = w.info_get('irc_nick_color', nick)
+
+                colored_nicks[servername][channelname][nick] = nick_color
 
             w.infolist_free(nicklist)
 
@@ -115,6 +136,7 @@ if __name__ == "__main__":
         ignore_channels = w.config_get_plugin('blacklist_channels').split(',')
         ignore_nicks = w.config_get_plugin('blacklist_nicks').split(',')
 
-        populate_nicks()
+        populate_nicks() # Run it once to get data ready until nicklist_change triggers
         w.hook_modifier('weechat_print', 'colorize_cb', '')
         w.hook_signal('nicklist_changed', 'populate_nicks', '')
+
