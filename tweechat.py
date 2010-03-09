@@ -16,6 +16,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
+#
+#
+# Huge WARNING: This script can block weechat to death. 
+# Use at own risk.
 
 #
 # (this script requires WeeChat 0.3.0 or newer)
@@ -26,11 +30,13 @@
 #
 
 import weechat, twitter
-import time
-import sys
+import time, sys, socket
 reload(sys)
 
 sys.setdefaultencoding('UTF-8')
+
+# set short timeout to try to minize blocking issues
+socket.setdefaulttimeout(3)
 
 w = weechat
 
