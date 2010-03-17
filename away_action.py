@@ -16,13 +16,32 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ###
+#   * plugins.var.python.inotify.ignore_channel:
+#   Comma separated list of patterns for define ignores. Notifications from channels where its name
+#   matches any of these patterns will be ignored.
+#   Wildcards '*', '?' and char groups [..] can be used.
+#   An ignore exception can be added by prefixing '!' in the pattern.
+#
+#       Example:
+#       *ubuntu*,!#ubuntu-offtopic
+#       any notifications from a 'ubuntu' channel will be ignored, except from #ubuntu-offtopic
+#
+#   * plugins.var.python.inotify.ignore_nick:
+#   Same as ignore_channel, but for nicknames.
+#
+#       Example:
+#       troll,b[0o]t
+#       will ignore notifications from troll, bot and b0t
+#
+#   * plugins.var.python.inotify.ignore_text:
+#   Same as ignore_channel, but for the contents of the message.
 
 ###
 #
 #
 #   History:
 #   2010-03-11
-#   version 0.1: release
+#   version 0.1: initial release
 #
 ###
 
@@ -30,14 +49,14 @@ SCRIPT_NAME    = "away_action"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
 SCRIPT_VERSION = "0.1"
 SCRIPT_LICENSE = "GPL3"
-SCRIPT_DESC    = "Run command on highlight when away"
+SCRIPT_DESC    = "Run command on highlight and privmsg when away"
 
 ### Default Settings ###
 settings = {
 'ignore_channel' : '',
 'ignore_nick'    : '',
 'ignore_text'    : '',
-'command'        : '/msg -server minbif tor'
+'command'        : '' # Command to be ran, nick and message will be inserted at the end
 }
 
 ignore_nick, ignore_text, ignore_channel = (), (), ()
@@ -94,7 +113,6 @@ def get_nick(s):
 def away_cb(data, buffer, time, tags, display, hilight, prefix, msg):
 
     global ignore_nick, ignore_text, ignore_channel
-    #print tags, display, hilight, prefix, 'msg_len:%s' %len(msg)
 
     if not w.buffer_get_string(buffer, 'localvar_away'):
         return WEECHAT_RC_OK
@@ -104,7 +122,12 @@ def away_cb(data, buffer, time, tags, display, hilight, prefix, msg):
         if prefix not in ignore_nick \
                 and channel not in ignore_channel \
                 and msg not in ignore_text:
-            w.command('', '%s %s %s' %(weechat.config_get_plugin('command'), prefix, msg))
+            command = weechat.config_get_plugin('command')
+            if not command.startswith('/'):
+                w.prnt('', '%s: Error: %s' %(SCRIPT_NAME, 'command must start with /'))
+                return WEECHAT_RC_OK
+
+            w.command('', '%s %s %s' %(command, prefix, msg))
     return WEECHAT_RC_OK
 
 def ignore_update(*args):
@@ -122,6 +145,9 @@ if __name__ == '__main__' and import_ok and \
         if not weechat.config_is_set_plugin(opt):
             weechat.config_set_plugin(opt, val)
 
+    ignore_channel = Ignores('ignore_channel')
+    ignore_nick = Ignores('ignore_nick')
+    ignore_text = Ignores('ignore_text')
     weechat.hook_config('plugins.var.python.%s.ignore_*' %SCRIPT_NAME, 'ignore_update', '')
 
     weechat.hook_print('', '', '', 1, 'away_cb', '')
