@@ -40,6 +40,8 @@
 #
 #
 #   History:
+#   2010-03-17:
+#   version 0.2: add force on option
 #   2010-03-11
 #   version 0.1: initial release
 #
@@ -47,7 +49,7 @@
 
 SCRIPT_NAME    = "away_action"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "0.1"
+SCRIPT_VERSION = "0.2"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Run command on highlight and privmsg when away"
 
@@ -56,7 +58,8 @@ settings = {
 'ignore_channel' : '',
 'ignore_nick'    : '',
 'ignore_text'    : '',
-'command'        : '' # Command to be ran, nick and message will be inserted at the end
+'command'        : '/mute msg ', # Command to be ran, nick and message will be inserted at the end
+'force_enabled'  : 'off',
 }
 
 ignore_nick, ignore_text, ignore_channel = (), (), ()
@@ -114,8 +117,11 @@ def away_cb(data, buffer, time, tags, display, hilight, prefix, msg):
 
     global ignore_nick, ignore_text, ignore_channel
 
-    if not w.buffer_get_string(buffer, 'localvar_away'):
+    # Check if we are either away or force_enabled is on
+    if not w.buffer_get_string(buffer, 'localvar_away') and \
+       not w.config_get_plugin('force_enabled') == 'on':
         return WEECHAT_RC_OK
+
     if (hilight == '1' or 'notify_private' in tags) and display == '1':
         channel = weechat.buffer_get_string(buffer, 'short_name')
         prefix = get_nick(prefix)
