@@ -18,8 +18,8 @@
 #
 #
 #
-# Huge WARNING: This script can block weechat to death. 
-# Use at own risk.
+# Huge WARNING: This script can block weechat for as long as requests
+# to twitter lasts.  Use at own risk.
 
 #
 # (this script requires WeeChat 0.3.0 or newer)
@@ -30,15 +30,16 @@
 #
 
 import weechat, twitter
+w = weechat
 import time, sys, socket
 reload(sys)
 
 sys.setdefaultencoding('UTF-8')
 
 # set short timeout to try to minize blocking issues
-socket.setdefaulttimeout(3)
+SOCKETTIMEOUT = 5
+socket.setdefaulttimeout(SOCKETTIMEOUT)
 
-w = weechat
 
 SCRIPT_NAME    = "tweechat"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
@@ -67,7 +68,7 @@ failwhale = '''     v  v        v
      | .-, |     |  |
   .--./ /  |  _.---.| 
    '-. (__..-"       \\
-      \\          a    |
+      \\          a    |           %s
        ',.__.   ,__.-'/
          '--/_.'----'`'''
 
@@ -98,7 +99,7 @@ def print_line(line, timestamp=int(time.time())):
 
     global twitter_buffer
 
-    w.buffer_set(twitter_buffer, "unread", "1")
+    #w.buffer_set(twitter_buffer, "unread", "1")
     w.prnt_date_tags(twitter_buffer, timestamp,"notify_message", line)
 
 
@@ -198,8 +199,7 @@ def twitter_get(args=None):
             twitter_lastid = twitters[0].id
             twitter_display(twitters)
     except Exception, e:
-        w.prnt(twitter_buffer, failwhale)
-        w.prnt(twitter_buffer, '%s: Error: %s' %(SCRIPT_COMMAND, e))
+        w.prnt(twitter_buffer, failwhale %'Error: %s' %e)
 
 def twitter_buffer_input(data, buffer, input_data):
     """ Read data from user in twitter buffer. """
@@ -224,8 +224,7 @@ def twitter_buffer_input(data, buffer, input_data):
             prefix_color = w.color(w.config_string(w.config_get('weechat.color.chat_prefix_quit')))
             print_line('%s<--%s\tNot following %s anymore' %(prefix_color, w.color('reset'), user))
     except Exception, e:
-        w.prnt(twitter_buffer, failwhale)
-        w.prnt(twitter_buffer, '%s: Error: %s' %(SCRIPT_COMMAND, e))
+        w.prnt(twitter_buffer, failwhale %'Error: %s' %e)
         
     return w.WEECHAT_RC_OK
 
