@@ -162,6 +162,8 @@ def twitter_buffer_create():
             w.buffer_set(twitter_buffer, "localvar_set_channel", "twitter")
         else:
             w.buffer_set(twitter_buffer, "localvar_set_no_log", "1")
+        w.buffer_set(twitter_buffer, "localvar_set_nick", w.config_get_plugin('username'))
+
 
 def twitter_sched_cb(*kwargs):
     ''' Callback for scheduled twitter updates '''
