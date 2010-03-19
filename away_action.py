@@ -133,7 +133,7 @@ def away_cb(data, buffer, time, tags, display, hilight, prefix, msg):
                 w.prnt('', '%s: Error: %s' %(SCRIPT_NAME, 'command must start with /'))
                 return WEECHAT_RC_OK
 
-            w.command('', '%s %s %s' %(command, prefix, msg))
+            w.command('', '%s <%s> %s' %(command, prefix, msg))
     return WEECHAT_RC_OK
 
 def ignore_update(*args):
