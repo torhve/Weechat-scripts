@@ -29,15 +29,13 @@
 #     add autoreconnect option, autoreconnects on protocol error
 # 2010-03-17, xt <xt@bash.no>:
 #     add autoconnect option, add new command /jmsg with -server option
-# 2010-03-17, FlashCode <flashcode@flashtux.org>:
-#     development snapshot
 # 2009-02-22, FlashCode <flashcode@flashtux.org>:
 #     first version (unofficial)
 #
 
 SCRIPT_NAME    = "jabber"
 SCRIPT_AUTHOR  = "FlashCode <flashcode@flashtux.org>"
-SCRIPT_VERSION = "0.1-dev-20100319"
+SCRIPT_VERSION = "0.1-dev-20100322"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Jabber/XMPP protocol for WeeChat"
 SCRIPT_COMMAND = SCRIPT_NAME
@@ -62,50 +60,50 @@ except:
 
 jabber_servers = []
 jabber_server_options = {
-    "jid"     : { "type"         : "string",
-                  "desc"         : "jabber id (user@server.tld)",
-                  "min"          : 0,
-                  "max"          : 0,
-                  "string_values": "",
-                  "default"      : "",
-                  "value"        : "",
-                  "check_cb"     : "",
-                  "change_cb"    : "",
-                  "delete_cb"    : "",
-                  },
-    "password": { "type"         : "string",
-                  "desc"         : "password for jabber id on server",
-                  "min"          : 0,
-                  "max"          : 0,
-                  "string_values": "",
-                  "default"      : "",
-                  "value"        : "",
-                  "check_cb"     : "",
-                  "change_cb"    : "",
-                  "delete_cb"    : "",
-                  },
-    "autoconnect": { "type"         : "boolean",
-                  "desc"         : "automatically connect to server when script is starting",
-                  "min"          : 0,
-                  "max"          : 0,
-                  "string_values": "",
-                  "default"      : "off",
-                  "value"        : "off",
-                  "check_cb"     : "",
-                  "change_cb"    : "",
-                  "delete_cb"    : "",
-                  },
+    "jid"          : { "type"         : "string",
+                       "desc"         : "jabber id (user@server.tld)",
+                       "min"          : 0,
+                       "max"          : 0,
+                       "string_values": "",
+                       "default"      : "",
+                       "value"        : "",
+                       "check_cb"     : "",
+                       "change_cb"    : "",
+                       "delete_cb"    : "",
+                       },
+    "password"     : { "type"         : "string",
+                       "desc"         : "password for jabber id on server",
+                       "min"          : 0,
+                       "max"          : 0,
+                       "string_values": "",
+                       "default"      : "",
+                       "value"        : "",
+                       "check_cb"     : "",
+                       "change_cb"    : "",
+                       "delete_cb"    : "",
+                       },
+    "autoconnect"  : { "type"         : "boolean",
+                       "desc"         : "automatically connect to server when script is starting",
+                       "min"          : 0,
+                       "max"          : 0,
+                       "string_values": "",
+                       "default"      : "off",
+                       "value"        : "off",
+                       "check_cb"     : "",
+                       "change_cb"    : "",
+                       "delete_cb"    : "",
+                       },
     "autoreconnect": { "type"         : "boolean",
-                  "desc"         : "automatically reconnect to server when disconnect",
-                  "min"          : 0,
-                  "max"          : 0,
-                  "string_values": "",
-                  "default"      : "off",
-                  "value"        : "off",
-                  "check_cb"     : "",
-                  "change_cb"    : "",
-                  "delete_cb"    : "",
-                  },
+                       "desc"         : "automatically reconnect to server when disconnected",
+                       "min"          : 0,
+                       "max"          : 0,
+                       "string_values": "",
+                       "default"      : "off",
+                       "value"        : "off",
+                       "check_cb"     : "",
+                       "change_cb"    : "",
+                       "delete_cb"    : "",
+                       },
     }
 jabber_config_file = None
 jabber_config_section = {}
@@ -352,7 +350,10 @@ class Server:
             nick = { "away": False, "status": "" }
             show = node.getShow()
             nick_color = "bar_fg"
-            nick["status"] = node.getStatus().encode("utf-8")
+            if node.getStatus():
+                nick["status"] = node.getStatus().encode("utf-8")
+            else:
+                nick["status"] = ""
             if show in ["away", "xa"]:
                 nick["away"] = True
                 nick_color = "weechat.color.nicklist_away"
@@ -413,13 +414,13 @@ class Server:
                 autoreconnect_delay = 30
                 weechat.command('', '/wait %s /%s connect %s' %(\
                     autoreconnect_delay, SCRIPT_COMMAND, self.name))
-
+    
     def print_status(self, nickname, status):
         ''' Print a status in server window and in chat '''
         weechat.prnt(self.buffer, "%s%s has status %s" % (\
-                    weechat.prefix("action"),
-                    nickname,
-                    status))
+                weechat.prefix("action"),
+                nickname,
+                status))
         for chat in self.chats:
             if nickname in chat.buddy:
                 chat.print_status(status)
@@ -587,8 +588,8 @@ def jabber_hook_commands_and_completions():
                          "  Disconnect:         /jabber disconnect myserver\n"
                          "  Delete server:      /jabber del myserver\n\n"
                          "Other jabber commands:\n"
-                         "  /jchat  chat with a buddy\n"
-                         "  /jmsg  [-server servername] buddy, send message to buddy",
+                         "  /jchat  chat with a buddy (in private buffer)\n"
+                         "  /jmsg   send message to a buddy",
                          "list %(jabber_servers)"
                          " || add %(jabber_servers)"
                          " || connect %(jabber_servers)"
@@ -606,7 +607,7 @@ def jabber_hook_commands_and_completions():
     weechat.hook_command("jmsg", "Send a messge to a buddy",
                          "[-server servername] buddy text",
                          "servername: name of jabber server buddy is on\n"
-                         "buddy: buddy id",
+                         "     buddy: buddy id",
                          "",
                          "jabber_cmd_jmsg", "")
     weechat.hook_completion("jabber_servers", "list of jabber serves",
