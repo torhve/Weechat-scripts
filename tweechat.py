@@ -24,8 +24,11 @@
 #
 # (this script requires WeeChat 0.3.0 or newer)
 #
-# History:
 #
+# History:
+# 2010-03-24, xt <xt@bash.no>:
+#     add nicklist
+# -
 #     version 0.1: initial release
 #
 
@@ -43,7 +46,7 @@ socket.setdefaulttimeout(SOCKETTIMEOUT)
 
 SCRIPT_NAME    = "tweechat"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "0.1"
+SCRIPT_VERSION = "0.2"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Microblog client for weechat"
 SCRIPT_COMMAND = 'twitter'
@@ -163,6 +166,9 @@ def twitter_buffer_create():
         else:
             w.buffer_set(twitter_buffer, "localvar_set_no_log", "1")
         w.buffer_set(twitter_buffer, "localvar_set_nick", w.config_get_plugin('username'))
+        w.buffer_set(twitter_buffer, "nicklist", "1")
+        w.buffer_set(twitter_buffer, "nicklist_display_groups", "1")
+
 
 
 def twitter_sched_cb(*kwargs):
@@ -174,7 +180,7 @@ def twitter_sched_cb(*kwargs):
 
 
 def twitter_get(args=None):
-    """ Get some twitters by launching background process. """
+    """ Get some twitters  """
     global twitter_buffer, twitter_list, api, twitter_lastid
     # open buffer if needed
     if twitter_buffer == "":
@@ -191,6 +197,11 @@ def twitter_get(args=None):
                 return
             api = twitter.Api(username=w.config_get_plugin('username'),
                               password=w.config_get_plugin('password'))
+
+            #  Populate friends into nicklist
+            for user in api.GetFriends(w.config_get_plugin('username')):
+                w.nicklist_add_nick(twitter_buffer, "", user.screen_name, \
+                        'bar_fg', '', '', 1)
 
         if twitter_lastid:
             twitters = api.GetFriendsTimeline(since_id=twitter_lastid)
@@ -233,6 +244,7 @@ def twitter_buffer_input(data, buffer, input_data):
 def twitter_buffer_close(data, buffer):
     """ User closed twitter buffer. Oh no, why? """
     global twitter_buffer
+    w.nicklist_remove_all(twitter_buffer)
     twitter_buffer = ""
     return w.WEECHAT_RC_OK
 
