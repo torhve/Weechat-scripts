@@ -25,6 +25,8 @@
 # Happy chat, enjoy :)
 #
 # History:
+# 2010-03-22, xt <xt@bash.no>:
+#     add kick and invite, handle offline/unavailable status better
 # 2010-03-17, xt <xt@bash.no>:
 #     add autoreconnect option, autoreconnects on protocol error
 # 2010-03-17, xt <xt@bash.no>:
@@ -41,6 +43,8 @@ SCRIPT_DESC    = "Jabber/XMPP protocol for WeeChat"
 SCRIPT_COMMAND = SCRIPT_NAME
 
 import_ok = True
+import warnings
+warnings.simplefilter('ignore', DeprecationWarning)
 
 try:
     import weechat
@@ -278,8 +282,7 @@ class Server:
                 self.client.RegisterHandler("presence", self.presence_handler)
                 self.client.RegisterHandler("iq", self.iq_handler)
                 self.client.RegisterHandler("message", self.message_handler)
-                self.client.sendInitPresence(requestRoster=0)
-                #client.SendInitPresence(requestRoster=0)
+                self.client.sendInitPresence(requestRoster=1)
                 self.sock = self.client.Connection._sock.fileno()
                 hook_fd = weechat.hook_fd(self.sock, 1, 0, 0, "jabber_fd_cb", "")
                 weechat.buffer_set(self.buffer, "highlight_words", self.nick)
@@ -307,6 +310,16 @@ class Server:
         if not chat:
             chat = Chat(self, buddy, switch_to_buffer)
             self.chats.append(chat)
+
+    def add_buddy(self, jid):
+        """ Add a new buddy """
+        self.client.Roster.Authorize(jid)
+        self.client.Roster.Subscribe(jid)
+
+    def del_buddy(self, jid):
+        """ Remove a buddy and/or deny authorization request """
+        self.client.Roster.Unauthorize(jid)
+        self.client.Roster.Unsubscribe(jid)
     
     def print_debug_server(self, message):
         """ Print debug message on server buffer. """
@@ -342,49 +355,63 @@ class Server:
         self.print_debug_handler("presence", node)
         node_type = node.getType()
         nickname = node.getFrom().getStripped().encode("utf-8")
-        #if nickname in self.nicks:
-        #    del self.nicks[nickname]
         ptr_nick_gui = weechat.nicklist_search_nick(self.buffer, "", nickname)
         weechat.nicklist_remove_nick(self.buffer, ptr_nick_gui)
-        if node_type not in ["error", "unavailable"]:
-            nick = { "away": False, "status": "" }
-            show = node.getShow()
-            nick_color = "bar_fg"
-            if node.getStatus():
-                nick["status"] = node.getStatus().encode("utf-8")
-            else:
-                nick["status"] = ""
-            if show in ["away", "xa"]:
-                nick["away"] = True
-                nick_color = "weechat.color.nicklist_away"
-            weechat.nicklist_add_nick(self.buffer, "", node.getFrom().getStripped(),
-                                      nick_color, "", "", 1)
+
+        nick = { "away": False, "status": ""}
+        got_available = False
+        nick_color = "bar_fg"
+
+        if node.getStatus():
+            nick["status"] = node.getStatus().encode("utf-8")
 
             # Check if status has change and print if it has
             if nickname in self.nicks:
                 if nick['status'] != self.nicks[nickname]['status']:
                     self.print_status(nickname, nick['status'])
+                    # Was unavail, got avail, set flag so we can display join message
+                    if self.nicks[nickname]['status'] == 'unavailable':
+                        got_available = True
 
-            self.nicks[nickname] = nick
-            if not ptr_nick_gui:
+        show = node.getShow()
+        if show in ["away", "xa"]:
+            nick["away"] = True
+            nick_color = "weechat.color.nicklist_away"
+
+        if node_type == 'subscribe':
+            weechat.prnt(self.buffer, "%s%s%s%s has added you as buddy"
+                             % (weechat.prefix("join"),
+                                weechat.color("chat_nick"),
+                                nickname,
+                                jabber_config_color("message_join")))
+        elif node_type == 'unavailable' or node_type == 'error':
+            nick["away"] = True
+            nick['status'] = 'unavailable'
+            nick_color = "weechat.color.nicklist_offline"
+            if ptr_nick_gui:
+                weechat.prnt(self.buffer, "%s%s%s%s is now unavailable"
+                             % (weechat.prefix("quit"),
+                                weechat.color("chat_nick"),
+                                nickname,
+                                jabber_config_color("message_quit")))
+        else:
+            if not ptr_nick_gui or got_available:
                 weechat.prnt(self.buffer, "%s%s%s%s has joined%s"
                              % (weechat.prefix("join"),
                                 weechat.color("chat_nick"),
                                 nickname,
                                 jabber_config_color("message_join"),
                                 self.get_away_string(nick)))
-        else:
-            if ptr_nick_gui:
-                weechat.prnt(self.buffer, "%s%s%s%s has quit"
-                             % (weechat.prefix("quit"),
-                                weechat.color("chat_nick"),
-                                nickname,
-                                jabber_config_color("message_quit")))
+
+
+        # Nick status decided, now add to weechat nicklist and internal nick list
+        weechat.nicklist_add_nick(self.buffer, "", node.getFrom().getStripped(),
+                                      nick_color, "", "", 1)
+        self.nicks[nickname] = nick
     
     def iq_handler(self, conn, node):
         """ Receive iq message. """
         self.print_debug_handler("iq", node)
-        #weechat.prnt(self.buffer, "jabber: iq handler")
     
     def message_handler(self, conn, node):
         """ Receive message. """
@@ -589,6 +616,8 @@ def jabber_hook_commands_and_completions():
                          "  Delete server:      /jabber del myserver\n\n"
                          "Other jabber commands:\n"
                          "  /jchat  chat with a buddy (in private buffer)\n"
+                         "  /invite add a buddy to roster\n"
+                         "  /kick   remove buddy from roster\n"
                          "  /jmsg   send message to a buddy",
                          "list %(jabber_servers)"
                          " || add %(jabber_servers)"
@@ -599,6 +628,16 @@ def jabber_hook_commands_and_completions():
                          " || buddies"
                          " || debug",
                          "jabber_cmd_jabber", "")
+    weechat.hook_command("invite", "Add a buddy to your roster",
+                         "buddy",
+                         "buddy: buddy id",
+                         "",
+                         "jabber_cmd_invite", "")
+    weechat.hook_command("kick", "Remove a buddy from your roster, or deny auth",
+                         "buddy",
+                         "buddy: buddy id",
+                         "",
+                         "jabber_cmd_kick", "")
     weechat.hook_command("jchat", "Chat with a Jabber buddy",
                          "buddy",
                          "buddy: buddy id",
@@ -699,6 +738,22 @@ def jabber_cmd_jabber(data, buffer, args):
                 weechat.prnt("", "jabber: debug is now off")
         else:
             weechat.prnt("", "jabber: unknown action")
+    return weechat.WEECHAT_RC_OK
+
+def jabber_cmd_invite(data, buffer, args):
+    """ Command '/invite'. """
+    if args:
+        context = jabber_search_context(buffer)
+        if context["server"]:
+            context["server"].add_buddy(args)
+    return weechat.WEECHAT_RC_OK
+
+def jabber_cmd_kick(data, buffer, args):
+    """ Command '/kick'. """
+    if args:
+        context = jabber_search_context(buffer)
+        if context["server"]:
+            context["server"].del_buddy(args)
     return weechat.WEECHAT_RC_OK
 
 def jabber_cmd_jchat(data, buffer, args):
