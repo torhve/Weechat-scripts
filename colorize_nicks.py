@@ -21,6 +21,8 @@
 # 
 #
 # History:
+# 2010-03-26, xt
+#   version 0.3: fix error with exception
 # 2010-03-24, xt
 #   version 0.2: use ignore_channels when populating to increase performance.
 # 2010-02-03, xt
