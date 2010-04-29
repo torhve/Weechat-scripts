@@ -34,7 +34,7 @@
 
 import weechat, twitter
 w = weechat
-import time, sys, socket
+import time, sys, socket, urllib2
 reload(sys)
 
 sys.setdefaultencoding('UTF-8')
@@ -211,6 +211,11 @@ def twitter_get(args=None):
         if twitters:
             twitter_lastid = twitters[0].id
             twitter_display(twitters)
+    except urllib2.URLError, u:
+        if 'timed out' in str(u): # ignore timeouts, happens pretty often
+            pass
+        else:
+            w.prnt(twitter_buffer, failwhale %'Error: %s' %e)
     except Exception, e:
         w.prnt(twitter_buffer, failwhale %'Error: %s' %e)
 
