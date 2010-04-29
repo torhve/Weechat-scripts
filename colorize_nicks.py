@@ -35,7 +35,7 @@ w = weechat
 
 SCRIPT_NAME    = "colorize_nicks"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "0.2"
+SCRIPT_VERSION = "0.3"
 SCRIPT_LICENSE = "GPL"
 SCRIPT_DESC    = "Use the weechat nick colors in the chat area"
 
@@ -91,7 +91,7 @@ def colorize_cb(data, modifier, modifier_data, line):
                 nick_color = colored_nicks[server][channel][nick]
                 line = line.replace(nick, '%s%s%s' %(nick_color, nick, reset))
     except KeyError, e:
-        print '%s%s' %(e, colored_nicks)
+        pass
 
     return line
 
