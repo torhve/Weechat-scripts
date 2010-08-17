@@ -215,7 +215,7 @@ def twitter_get(args=None):
         if 'timed out' in str(u): # ignore timeouts, happens pretty often
             pass
         else:
-            w.prnt(twitter_buffer, failwhale %'Error: %s' %e)
+            w.prnt(twitter_buffer, failwhale %'Error: %s' %u)
     except Exception, e:
         w.prnt(twitter_buffer, failwhale %'Error: %s' %e)
 
