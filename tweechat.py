@@ -27,14 +27,14 @@
 #
 # History:
 # 2010-09-08, xt
-#   - OAuth
+#   - OAuth, switch to tweepy, add "saved search"
 # 2010-03-24, xt <xt@bash.no>:
 #     add nicklist
 # -
 #     version 0.1: initial release
 #
 
-import weechat, twitter
+import weechat, tweepy
 w = weechat
 import time, sys, socket, urllib2
 #reload(sys)
@@ -48,7 +48,7 @@ socket.setdefaulttimeout(SOCKETTIMEOUT)
 
 SCRIPT_NAME    = "tweechat"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "0.3"
+SCRIPT_VERSION = "0.4"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Microblog client for weechat"
 SCRIPT_COMMAND = 'twitter'
@@ -67,13 +67,15 @@ settings = {
 twitter_buffer           = ""
 twitter_list             = []
 twitter_lastid           = 0
+twitter_search_lastid    = 0
+twitter_current_search   = ''
 api                      = None
 
 
 failwhale = '''     v  v        v
      |  |  v     |  v
      | .-, |     |  |
-  .--./ /  |  _.---.| 
+  .--./ /  |  _.---.|
    '-. (__..-"       \\
       \\          a    |           %s
        ',.__.   ,__.-'/
@@ -87,6 +89,7 @@ if w.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
                          "Display twitters",
                          " ",
                          "Type tweet Hello from weechat! in twitter buffer to tweet from weechat\n"
+                         "Type search #tagname in twitter buffer to add a saved search\n"
                          'Type follow screen_name to follow a user\n'
                          'Type unfollow screen_name to stop following a user',
                          "", "twitter_cmd", "")
@@ -109,22 +112,36 @@ def print_line(line, timestamp=int(time.time())):
     #w.buffer_set(twitter_buffer, "unread", "1")
     w.prnt_date_tags(twitter_buffer, timestamp,"notify_message", line)
 
+def get_nick_color(nick):
+    if nick != w.config_get_plugin('username'):
+        nick_color = w.info_get('irc_nick_color', nick)
+    else:
+        nick_color = w.color(w.config_string(w.config_get('weechat.color.chat_nick_self')))
+    return nick_color
+
 
 def twitter_display(twitters):
     """ Display twitters in buffer. """
     separator = "\t"
     for status in reversed(twitters):
         nick = unicode(status.user.screen_name)
+        nick_color = get_nick_color(nick)
 
-        if nick != w.config_get_plugin('username'):
-            nick_color = w.info_get('irc_nick_color', nick)
-        else:
-            nick_color = w.color(w.config_string(w.config_get('weechat.color.chat_nick_self')))
 
         text = unicode(status.text)
         print_line( "%s%s%s%s" % (nick_color, nick, separator, text),
-                status.created_at_in_seconds)
+                time.mktime(status.created_at.timetuple()))
 
+def search_display(twitters):
+    """ Display twitters in buffer. """
+    separator = "\t"
+    for status in reversed(twitters):
+        nick = unicode(status.from_user)
+        nick_color = get_nick_color(nick)
+
+        text = unicode(status.text)
+        print_line( "%s%s%s%s" % (nick_color, nick, separator, text),
+                time.mktime(status.created_at.timetuple()))
 
 
 def title_cb(*kwargs):
@@ -144,7 +161,7 @@ def title_cb(*kwargs):
 
 def set_title(new_title=False):
     global twitter_buffer
-    
+
     title = 'Get help with /help twitter'
     if new_title:
         title = new_title
@@ -185,7 +202,7 @@ def twitter_sched_cb(*kwargs):
 
 def twitter_get(args=None):
     """ Get some twitters  """
-    global twitter_buffer, twitter_list, api, twitter_lastid
+    global twitter_buffer, twitter_list, api, twitter_lastid, twitter_current_search, twitter_search_lastid
     # open buffer if needed
     if twitter_buffer == "":
         twitter_buffer_create()
@@ -199,24 +216,32 @@ def twitter_get(args=None):
             if not w.config_get_plugin('password'):
                 w.prnt('', '%s: Error: No password set' %SCRIPT_COMMAND)
                 return
-            api = twitter.Api (username=w.config_get_plugin('username'),
-                            password=w.config_get_plugin('password'),
-                            access_token_key=w.config_get_plugin('token_key'),
-                            access_token_secret=w.config_get_plugin('token_secret'))
+            auth = tweepy.OAuthHandler('Nw9Drox04uc9WmKvU0t0Xw', 'C17Lb71BUmkcUPKm3stZVdNugt2wLigh69ns11X6c78')
+            auth.set_access_token(w.config_get_plugin('token_key'), w.config_get_plugin('token_secret'))
+            api = tweepy.API(auth)
 
             #  Populate friends into nicklist
-            for user in api.GetFriends(w.config_get_plugin('username')):
+            for user in api.friends(w.config_get_plugin('username')):
                 w.nicklist_add_nick(twitter_buffer, "", user.screen_name, \
                         'bar_fg', '', '', 1)
 
         if twitter_lastid:
-            twitters = api.GetFriendsTimeline(since_id=twitter_lastid)
+            twitters = api.home_timeline(since_id=twitter_lastid)
         else:
-            twitters = api.GetFriendsTimeline()
+            twitters = api.home_timeline()
 
         if twitters:
             twitter_lastid = twitters[0].id
             twitter_display(twitters)
+
+        if twitter_current_search:
+            if twitter_search_lastid:
+                search_results = api.search(twitter_current_search,since_id=twitter_search_lastid)
+            else:
+                search_results = api.search(twitter_current_search)
+            if search_results:
+                twitter_search_lastid = search_results[0].id
+                search_display(search_results)
     except urllib2.URLError, u:
         if 'timed out' in str(u): # ignore timeouts, happens pretty often
             pass
@@ -228,28 +253,32 @@ def twitter_get(args=None):
 def twitter_buffer_input(data, buffer, input_data):
     """ Read data from user in twitter buffer. """
 
-    global api
+    global api, twitter_current_search, twitter_search_lastid
 
     try:
         if input_data == "q" or input_data == "Q":
             w.buffer_close(buffer)
         elif input_data.startswith('tweet'):
-            api.PostUpdate(input_data[5:])
+            api.update_status(input_data[5:])
             twitter_get()
         elif input_data.startswith('follow'):
             user = input_data[len('follow')+1:]
-            w.prnt('', user)
-            api.CreateFriendship(user)
+            api.create_friendship(user)
             prefix_color = w.color(w.config_string(w.config_get('weechat.color.chat_prefix_join')))
             print_line('%s-->%s\tNow following %s' %(prefix_color, w.color('reset'), user))
+        elif input_data.startswith('search'):
+            query = input_data[len('search')+1:]
+            twitter_current_search = query
+            twitter_search_lastid = 0 # Reset search id
+            twitter_get()
         elif input_data.startswith('unfollow'):
             user = input_data[len('unfollow')+1:]
-            api.DestroyFriendship(user)
+            api.destroy_friendship(user)
             prefix_color = w.color(w.config_string(w.config_get('weechat.color.chat_prefix_quit')))
             print_line('%s<--%s\tNot following %s anymore' %(prefix_color, w.color('reset'), user))
     except Exception, e:
         w.prnt(twitter_buffer, failwhale %'Error: %s' %e)
-        
+
     return w.WEECHAT_RC_OK
 
 def twitter_buffer_close(data, buffer):
