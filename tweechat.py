@@ -26,6 +26,8 @@
 #
 #
 # History:
+# 2010-09-08, xt
+#   - OAuth
 # 2010-03-24, xt <xt@bash.no>:
 #     add nicklist
 # -
@@ -35,9 +37,9 @@
 import weechat, twitter
 w = weechat
 import time, sys, socket, urllib2
-reload(sys)
+#reload(sys)
 
-sys.setdefaultencoding('UTF-8')
+#sys.setdefaultencoding('UTF-8')
 
 # set short timeout to try to minize blocking issues
 SOCKETTIMEOUT = 5
@@ -46,7 +48,7 @@ socket.setdefaulttimeout(SOCKETTIMEOUT)
 
 SCRIPT_NAME    = "tweechat"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "0.2"
+SCRIPT_VERSION = "0.3"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Microblog client for weechat"
 SCRIPT_COMMAND = 'twitter'
@@ -55,6 +57,8 @@ SCRIPT_COMMAND = 'twitter'
 settings = {
         'username': '',
         'password': '',
+        'token_key': '',
+        'token_secret': '',
         'refresh_interval': '300', #in seconds
         'loggging': 'on', # log to file using standard weechat logging
 }
@@ -195,8 +199,10 @@ def twitter_get(args=None):
             if not w.config_get_plugin('password'):
                 w.prnt('', '%s: Error: No password set' %SCRIPT_COMMAND)
                 return
-            api = twitter.Api(username=w.config_get_plugin('username'),
-                              password=w.config_get_plugin('password'))
+            api = twitter.Api (username=w.config_get_plugin('username'),
+                            password=w.config_get_plugin('password'),
+                            access_token_key=w.config_get_plugin('token_key'),
+                            access_token_secret=w.config_get_plugin('token_secret'))
 
             #  Populate friends into nicklist
             for user in api.GetFriends(w.config_get_plugin('username')):
@@ -216,8 +222,8 @@ def twitter_get(args=None):
             pass
         else:
             w.prnt(twitter_buffer, failwhale %'Error: %s' %u)
-    except Exception, e:
-        w.prnt(twitter_buffer, failwhale %'Error: %s' %e)
+    #except Exception, e:
+    #    w.prnt(twitter_buffer, failwhale %'Error: %s' %e)
 
 def twitter_buffer_input(data, buffer, input_data):
     """ Read data from user in twitter buffer. """
