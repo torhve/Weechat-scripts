@@ -247,8 +247,8 @@ def twitter_get(args=None):
             pass
         else:
             w.prnt(twitter_buffer, failwhale %'Error: %s' %u)
-    #except Exception, e:
-    #    w.prnt(twitter_buffer, failwhale %'Error: %s' %e)
+    except Exception, e:
+        w.prnt(twitter_buffer, failwhale %'Error: %s' %e)
 
 def twitter_buffer_input(data, buffer, input_data):
     """ Read data from user in twitter buffer. """
