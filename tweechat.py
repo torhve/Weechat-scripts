@@ -26,6 +26,8 @@
 #
 #
 # History:
+# 2010-10-23, xt
+#   - Improve nicklist, fix encoding bug
 # 2010-09-08, xt
 #   - OAuth, switch to tweepy, add "saved search"
 # 2010-03-24, xt <xt@bash.no>:
@@ -70,6 +72,7 @@ twitter_lastid           = 0
 twitter_search_lastid    = 0
 twitter_current_search   = ''
 api                      = None
+encoding                 = 'UTF-8'
 
 
 failwhale = '''     v  v        v
@@ -103,6 +106,9 @@ if w.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
             0,
             'twitter_sched_cb',
             '')
+    w_encoding = w.config_string(w.config_get('charset.default.encode'))
+    if w_encoding:
+        encoding = w_encoding
 
 def print_line(line, timestamp=int(time.time())):
     ''' Print a line in the twitter buffer '''
@@ -110,6 +116,7 @@ def print_line(line, timestamp=int(time.time())):
     global twitter_buffer
 
     #w.buffer_set(twitter_buffer, "unread", "1")
+    line = line.encode(encoding)
     w.prnt_date_tags(twitter_buffer, timestamp,"notify_message", line)
 
 def get_nick_color(nick):
@@ -188,7 +195,6 @@ def twitter_buffer_create():
             w.buffer_set(twitter_buffer, "localvar_set_no_log", "1")
         w.buffer_set(twitter_buffer, "localvar_set_nick", w.config_get_plugin('username'))
         w.buffer_set(twitter_buffer, "nicklist", "1")
-        w.buffer_set(twitter_buffer, "nicklist_display_groups", "1")
 
 
 
@@ -199,6 +205,21 @@ def twitter_sched_cb(*kwargs):
 
     return w.WEECHAT_RC_OK
 
+
+def add_nick(nick):
+    ''' Add given nick to nicklist '''
+
+    global twitter_buffer
+
+    w.nicklist_add_nick(twitter_buffer, "", nick, 'bar_fg', '', '', 1)
+
+def remove_nick(nick):
+    ''' Remove given nick from nicklist '''
+
+    global twitter_buffer
+
+    ptr_nick_gui = w.nicklist_search_nick(twitter_buffer, "", nick)
+    w.nicklist_remove_nick(twitter_buffer, ptr_nick_gui)
 
 def twitter_get(args=None):
     """ Get some twitters  """
@@ -222,8 +243,7 @@ def twitter_get(args=None):
 
             #  Populate friends into nicklist
             for user in api.friends(w.config_get_plugin('username')):
-                w.nicklist_add_nick(twitter_buffer, "", user.screen_name, \
-                        'bar_fg', '', '', 1)
+                add_nick(user.screen_name)
 
         if twitter_lastid:
             twitters = api.home_timeline(since_id=twitter_lastid)
@@ -247,8 +267,8 @@ def twitter_get(args=None):
             pass
         else:
             w.prnt(twitter_buffer, failwhale %'Error: %s' %u)
-    except Exception, e:
-        w.prnt(twitter_buffer, failwhale %'Error: %s' %e)
+    #except Exception, e:
+    #    w.prnt(twitter_buffer, failwhale %'Error: %s' %e)
 
 def twitter_buffer_input(data, buffer, input_data):
     """ Read data from user in twitter buffer. """
@@ -266,6 +286,7 @@ def twitter_buffer_input(data, buffer, input_data):
             api.create_friendship(user)
             prefix_color = w.color(w.config_string(w.config_get('weechat.color.chat_prefix_join')))
             print_line('%s-->%s\tNow following %s' %(prefix_color, w.color('reset'), user))
+            add_nick(user)
         elif input_data.startswith('search'):
             query = input_data[len('search')+1:]
             twitter_current_search = query
@@ -276,6 +297,7 @@ def twitter_buffer_input(data, buffer, input_data):
             api.destroy_friendship(user)
             prefix_color = w.color(w.config_string(w.config_get('weechat.color.chat_prefix_quit')))
             print_line('%s<--%s\tNot following %s anymore' %(prefix_color, w.color('reset'), user))
+            remove_nick(user)
     except Exception, e:
         w.prnt(twitter_buffer, failwhale %'Error: %s' %e)
 
