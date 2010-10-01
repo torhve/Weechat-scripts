@@ -26,7 +26,9 @@
 #
 #
 # History:
-# 2010-10-23, xt
+# 2010-10-01,
+#   - Various small fixes, html entities, etc
+# 2010-09-23, xt
 #   - Improve nicklist, fix encoding bug
 # 2010-09-08, xt
 #   - OAuth, switch to tweepy, add "saved search"
@@ -50,10 +52,11 @@ socket.setdefaulttimeout(SOCKETTIMEOUT)
 
 SCRIPT_NAME    = "tweechat"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "0.4"
+SCRIPT_VERSION = "0.5"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Microblog client for weechat"
 SCRIPT_COMMAND = 'twitter'
+BUFFER_NAME = SCRIPT_COMMAND
 
 # script options
 settings = {
@@ -116,7 +119,7 @@ def print_line(line, timestamp=int(time.time())):
     global twitter_buffer
 
     #w.buffer_set(twitter_buffer, "unread", "1")
-    line = line.encode(encoding)
+    line = tweepy.utils.unescape_html(line.encode(encoding))
     w.prnt_date_tags(twitter_buffer, timestamp,"notify_message", line)
 
 def get_nick_color(nick):
@@ -178,9 +181,9 @@ def set_title(new_title=False):
 def twitter_buffer_create():
     """ Create twitter buffer. """
     global twitter_buffer
-    twitter_buffer = w.buffer_search("python", "twitter")
+    twitter_buffer = w.buffer_search("python", BUFFER_NAME)
     if twitter_buffer == "":
-        twitter_buffer = w.buffer_new("twitter",
+        twitter_buffer = w.buffer_new(BUFFER_NAME,
                                         "twitter_buffer_input", "",
                                         "twitter_buffer_close", "")
     if twitter_buffer != "":
@@ -188,11 +191,11 @@ def twitter_buffer_create():
         w.buffer_set(twitter_buffer, "time_for_each_line", "1")
 
         # Configure logging
-        if w.config_get_plugin('logging') == 'on':
-            w.buffer_set(twitter_buffer, "localvar_set_server", "tweechat")
-            w.buffer_set(twitter_buffer, "localvar_set_channel", "twitter")
-        else:
+        if not w.config_get_plugin('logging') == 'on':
             w.buffer_set(twitter_buffer, "localvar_set_no_log", "1")
+        w.buffer_set(twitter_buffer, "localvar_set_server", "tweechat")
+        w.buffer_set(twitter_buffer, "localvar_set_channel", BUFFER_NAME )
+        w.buffer_set(twitter_buffer, "short_name", BUFFER_NAME)
         w.buffer_set(twitter_buffer, "localvar_set_nick", w.config_get_plugin('username'))
         w.buffer_set(twitter_buffer, "nicklist", "1")
 
@@ -244,6 +247,8 @@ def twitter_get(args=None):
             #  Populate friends into nicklist
             for user in api.friends(w.config_get_plugin('username')):
                 add_nick(user.screen_name)
+            # Add self to nicklist
+            add_nick(w.config_get_plugin('username'))
 
         if twitter_lastid:
             twitters = api.home_timeline(since_id=twitter_lastid)
