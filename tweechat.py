@@ -40,7 +40,7 @@
 
 import weechat, tweepy
 w = weechat
-import time, sys, socket, urllib2
+import time, sys, socket, urllib2, calendar
 #reload(sys)
 
 #sys.setdefaultencoding('UTF-8')
@@ -113,6 +113,13 @@ if w.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
     if w_encoding:
         encoding = w_encoding
 
+def dt2lt(dt):
+    timestamp = time.mktime(dt.timetuple())
+    if time.localtime().tm_isdst:
+        timestamp += 3600
+    timestamp -= time.timezone
+    return timestamp
+
 def print_line(line, timestamp=int(time.time())):
     ''' Print a line in the twitter buffer '''
 
@@ -139,8 +146,8 @@ def twitter_display(twitters):
 
 
         text = unicode(status.text)
-        print_line( "%s%s%s%s" % (nick_color, nick, separator, text),
-                time.mktime(status.created_at.timetuple()))
+        timestamp = dt2lt(status.created_at)
+        print_line( "%s%s%s%s" %(nick_color, nick, separator, text), timestamp)
 
 def search_display(twitters):
     """ Display twitters in buffer. """
@@ -150,8 +157,8 @@ def search_display(twitters):
         nick_color = get_nick_color(nick)
 
         text = unicode(status.text)
-        print_line( "%s%s%s%s" % (nick_color, nick, separator, text),
-                time.mktime(status.created_at.timetuple()))
+        timestamp = dt2lt(status.created_at)
+        print_line( "%s%s%s%s" %(nick_color, nick, separator, text), timestamp)
 
 
 def title_cb(*kwargs):
