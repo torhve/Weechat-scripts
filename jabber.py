@@ -27,7 +27,7 @@
 #
 # History:
 # 2010-03-22, xt, <xt@bash.no>
-#     version 04:
+#     version 0.4:
 #     add kick and invite
 # 2010-08-03, Aleksey V. Zapparov <ixti@member.fsf.org>:
 #     version 0.3:
