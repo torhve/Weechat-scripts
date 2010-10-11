@@ -25,6 +25,8 @@
 # 
 #
 # History:
+# 2010-10-11, xt
+#   version 0.7: do not trigger on notices
 # 2010-08-25, xt
 #   version 0.6: notice some buffers instead of msg
 # 2009-12-08, Chaz6
@@ -47,7 +49,7 @@ from time import time as now
 
 SCRIPT_NAME    = "announce_url_title"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "0.6"
+SCRIPT_VERSION = "0.7"
 SCRIPT_LICENSE = "GPL"
 SCRIPT_DESC    = "Look up URL title"
 
@@ -91,6 +93,10 @@ def unescape(s):
 def url_print_cb(data, buffer, time, tags, displayed, highlight, prefix, message):
 
     global url_hook_process, buffer_name, url_stdout, urls
+
+    # Do not trigger on notices
+    if prefix == '--':
+        return w.WEECHAT_RC_OK
 
     msg_buffer_name = get_buffer_name(buffer)
     # Skip ignored buffers
