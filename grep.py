@@ -66,10 +66,13 @@
 #
 #
 #   History:
+#   2010-10-14
+#   version 0.6.8: by xt <xt@bash.no>
+#   * supress highlights when printing in grep buffer
 #   2010-10-06
 #   version 0.6.7: by xt <xt@bash.no> 
 #   * better temporary file:
-#    use tempfile.NamedTemporaryfile to create a temp file in log dir, 
+#    use tempfile.mkstemp. to create a temp file in log dir, 
 #    makes it safer with regards to write permission and multi user
 #   2010-04-08
 #   version 0.6.6: bug fixes
@@ -171,7 +174,7 @@ except ImportError:
 
 SCRIPT_NAME    = "grep"
 SCRIPT_AUTHOR  = "Elián Hanisch <lambdae2@gmail.com>"
-SCRIPT_VERSION = "0.6.7"
+SCRIPT_VERSION = "0.6.8"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Search in buffers and logs"
 SCRIPT_COMMAND = "grep"
@@ -419,7 +422,7 @@ def error(s, prefix=None, buffer='', trace=''):
 def say(s, prefix=None, buffer=''):
     """normal msg"""
     prefix = prefix or script_nick
-    weechat.prnt(buffer, '%s\t%s' %(prefix, s))
+    weechat.prnt_date_tags(buffer, 0, 'no_highlight', '%s\t%s' %(prefix, s))
 
 ### Log files and buffers ###
 cache_dir = {} # note: don't remove, needed for completion if the script was loaded recently
@@ -919,7 +922,7 @@ def show_matching_lines():
 
 # defined here for commodity
 grep_proccess_cmd = """python -%(bytecode)sc '
-import sys, cPickle, tempfile
+import sys, cPickle, tempfile, os
 sys.path.append("%(script_path)s") # add WeeChat script dir so we can import grep
 from grep import make_regexp, grep_file, strip_home
 logs = (%(logs)s, )
@@ -932,8 +935,9 @@ try:
         %(count)s, regexp, "%(hilight)s", %(exact)s, %(invert)s)
         d[log_name] = lines
     #fdname = "/tmp/grep_search.tmp"
-    fd = tempfile.NamedTemporaryFile(dir="%(home_dir)s", delete=False)
-    print fd.name
+    fd, fdname = tempfile.mkstemp(prefix="grep", dir="%(home_dir)s")
+    fd = os.fdopen(fd, "wb")
+    print fdname
     cPickle.dump(d, fd, -1)
     fd.close()
 except Exception, e:
@@ -1081,7 +1085,7 @@ def buffer_update():
                                 error("Found garbage in log '%s', maybe it's corrupted" %log,
                                         trace=repr(line))
                                 line = line.replace('\x00', '')
-                            prnt(buffer, format_line(line))
+                            weechat.prnt_date_tags(buffer, 0, 'no_highlight', format_line(line))
 
                 # summary
                 if count or get_config_boolean('show_summary'):
