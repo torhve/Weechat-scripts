@@ -414,7 +414,9 @@ class Server:
 
     def option_string(self, option_name):
         """ Return a server option, as string. """
-        return weechat.config_string(self.options[option_name])
+        res =  weechat.config_string(self.options[option_name])
+        print res, self.options[option_name], option_name
+        return res
 
     def option_boolean(self, option_name):
         """ Return a server option, as boolean. """
