@@ -25,8 +25,8 @@
 # 
 #
 # History:
-# 2010-10-11, xt
-#   version 10: add ignor
+# 2010-11-01, xt
+#   version 10: add ignored buffers feature
 # 2010-10-29, add ignore buffers feature
 #   version 0.9: WeeChat user-agent option
 # 2010-10-11, xt
