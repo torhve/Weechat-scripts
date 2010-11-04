@@ -65,6 +65,7 @@ settings = {
 }
 
 ignore_nick, ignore_text, ignore_channel = (), (), ()
+last_buffer = ''
 try:
     import weechat
     w = weechat
@@ -117,7 +118,7 @@ def get_nick(s):
 
 def away_cb(data, buffer, time, tags, display, hilight, prefix, msg):
 
-    global ignore_nick, ignore_text, ignore_channel
+    global ignore_nick, ignore_text, ignore_channel, last_buffer
 
     # Check if we are either away or force_enabled is on
     if not w.buffer_get_string(buffer, 'localvar_away') and \
@@ -130,6 +131,8 @@ def away_cb(data, buffer, time, tags, display, hilight, prefix, msg):
         if prefix not in ignore_nick \
                 and channel not in ignore_channel \
                 and msg not in ignore_text:
+            last_buffer = buffer
+            w.hook_info('%s_buffer' %SCRIPT_NAME, '', '', 'info_hook_cb', '')
             command = weechat.config_get_plugin('command')
             if not command.startswith('/'):
                 w.prnt('', '%s: Error: %s' %(SCRIPT_NAME, 'command must start with /'))
@@ -143,6 +146,12 @@ def ignore_update(*args):
     ignore_nick._get_ignores()
     ignore_text._get_ignores()
     return WEECHAT_RC_OK
+
+
+def info_hook_cb(data, info_name, arguments):
+    global last_buffer
+    return last_buffer
+
 
 if __name__ == '__main__' and import_ok and \
         weechat.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE, SCRIPT_DESC,
