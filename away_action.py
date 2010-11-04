@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ###
-#   * plugins.var.python.inotify.ignore_channel:
+#   * plugins.var.python.away_action.ignore_channel:
 #   Comma separated list of patterns for define ignores. Notifications from channels where its name
 #   matches any of these patterns will be ignored.
 #   Wildcards '*', '?' and char groups [..] can be used.
@@ -26,20 +26,22 @@
 #       *ubuntu*,!#ubuntu-offtopic
 #       any notifications from a 'ubuntu' channel will be ignored, except from #ubuntu-offtopic
 #
-#   * plugins.var.python.inotify.ignore_nick:
+#   * plugins.var.python.away_action.ignore_nick:
 #   Same as ignore_channel, but for nicknames.
 #
 #       Example:
 #       troll,b[0o]t
 #       will ignore notifications from troll, bot and b0t
 #
-#   * plugins.var.python.inotify.ignore_text:
+#   * plugins.var.python.away_action.ignore_text:
 #   Same as ignore_channel, but for the contents of the message.
 
 ###
 #
 #
 #   History:
+#   2010-11-04:
+#   version 03: minor cleanups
 #   2010-03-17:
 #   version 0.2: add force on option
 #   2010-03-11
@@ -49,7 +51,7 @@
 
 SCRIPT_NAME    = "away_action"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "0.2"
+SCRIPT_VERSION = "0.3"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Run command on highlight and privmsg when away"
 
