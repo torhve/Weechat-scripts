@@ -50,7 +50,9 @@ def msg_command_cb(data, buffer, time, tags, display, hilight, prefix, msg):
         w.command('', msg)
     else:
         buffer_name = w.info_get('away_action_buffer', '')
-        buffer = w.buffer_search('', buffer_name)
+        plugin = buffer_name.split('.')[0]
+        buffer_name = '.'.join(buffer_name.split('.')[1:])
+        buffer = w.buffer_search(plugin, buffer_name)
         if buffer:
             w.command(buffer, msg)
     return WEECHAT_RC_OK
