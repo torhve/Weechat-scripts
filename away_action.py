@@ -41,7 +41,7 @@
 #
 #   History:
 #   2010-11-04:
-#   version 03: minor cleanups
+#   version 0.3: minor cleanups, fix import, add hook info
 #   2010-03-17:
 #   version 0.2: add force on option
 #   2010-03-11
@@ -71,6 +71,7 @@ try:
     w = weechat
     WEECHAT_RC_OK = weechat.WEECHAT_RC_OK
     import_ok = True
+    from fnmatch import fnmatch
 except:
     print "This script must be run under WeeChat."
     print "Get WeeChat now at: http://www.weechat.org/"
@@ -132,7 +133,6 @@ def away_cb(data, buffer, time, tags, display, hilight, prefix, msg):
                 and channel not in ignore_channel \
                 and msg not in ignore_text:
             last_buffer = buffer
-            w.hook_info('%s_buffer' %SCRIPT_NAME, '', '', 'info_hook_cb', '')
             command = weechat.config_get_plugin('command')
             if not command.startswith('/'):
                 w.prnt('', '%s: Error: %s' %(SCRIPT_NAME, 'command must start with /'))
@@ -168,6 +168,7 @@ if __name__ == '__main__' and import_ok and \
     weechat.hook_config('plugins.var.python.%s.ignore_*' %SCRIPT_NAME, 'ignore_update', '')
 
     weechat.hook_print('', '', '', 1, 'away_cb', '')
+    w.hook_info('%s_buffer' %SCRIPT_NAME, '', '', 'info_hook_cb', '')
 
 
 # vim:set shiftwidth=4 tabstop=4 softtabstop=4 expandtab textwidth=100:
