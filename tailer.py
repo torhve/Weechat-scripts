@@ -14,7 +14,7 @@ SCRIPT_NAME    = "tailer"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
 SCRIPT_VERSION = "0.1"
 SCRIPT_LICENSE = "GPL3"
-SCRIPT_DESC    = "Tail any number of files and print output to any buffer"
+SCRIPT_DESC    = "Tail any number of files and run any command with line appended"
 
 ### Default Settings ###
 settings = {
@@ -49,7 +49,6 @@ def tailer_conf_update(*args):
 
 
 def tailer_cb(*args):
-    #Set the filename and open the file
     for entry in w.config_get_plugin('entries').split(','):
         if not entry: continue
         filename, command = entry.split('=')
