@@ -25,6 +25,8 @@
 # 
 #
 # History:
+# 2010-11-02, xt
+#   version 11: add prefix
 # 2010-11-01, xt
 #   version 10: add ignored buffers feature
 # 2010-10-29, add ignore buffers feature
@@ -55,14 +57,14 @@ from time import time as now
 
 SCRIPT_NAME    = "announce_url_title"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "10"
+SCRIPT_VERSION = "11"
 SCRIPT_LICENSE = "GPL"
-SCRIPT_DESC    = "Look up URL title"
+SCRIPT_DESC    = "Announce URL titles to channel or locally"
 
 settings = {
     "buffers"        : 'freenode.#testing,',     # comma separated list of buffers
     "buffers_notice" : 'freenode.#testing,',     # comma separated list of buffers
-    'ignore_buffers' : 'freenode.#ignored,',     # comma separated list of buffers to be ignored by this module
+    'ignore_buffers' : 'grep,',     # comma separated list of buffers to be ignored by this module
     'title_max_length': '80',
     'url_ignore'     : '', # comma separated list of strings in url to ignore
     'reannounce_wait': '5', # 5 minutes delay
@@ -70,7 +72,8 @@ settings = {
     'suffix':   '',
     'announce_public': 'off', # print it or msg the buffer
     'global': 'off', # whether to enable for all buffers
-    'user_agent': 'WeeChat/%(version)s (http://www.weechat.org)' # user-agent format string
+    'user_agent': 'WeeChat/%(version)s (http://www.weechat.org)', # user-agent format string
+    'global_prefix':'url', # Prefix for when not public announcement
 }
 
 
@@ -84,10 +87,10 @@ urlRe = re.compile(r'(\w+://(?:%s|%s)(?::\d+)?(?:/[^\])>\s]*)?)' % (domain, ipAd
 buffer_name = ''
 
 urls = {}
-
-def get_buffer_name(bufferp):
-    bufferd = w.buffer_get_string(bufferp, "name")
-    return bufferd
+script_nick = 'url'
+def say(s, buffer=''):
+    """normal msg"""
+    weechat.prnt(buffer, '%s\t%s' %(script_nick, s))
 
 def unescape(s):
     """Unescape HTML entities"""
@@ -103,7 +106,7 @@ def url_print_cb(data, buffer, time, tags, displayed, highlight, prefix, message
     if prefix == '--':
         return w.WEECHAT_RC_OK
 
-    msg_buffer_name = get_buffer_name(buffer)
+    msg_buffer_name = w.buffer_get_string(buffer, "name")
     # Skip ignored buffers
     if msg_buffer_name in w.config_get_plugin('ignore_buffers').split(','):
         return w.WEECHAT_RC_OK
@@ -160,11 +163,11 @@ def url_process_launcher():
         if not url_d: # empty dict means not launched
             url_d['launched'] = now()
 
+            # Read 8192
             cmd = "python -c \"import urllib2; opener = urllib2.build_opener();"
             cmd += "opener.addheaders = [('User-agent','%s')];" % user_agent
             cmd += "print opener.open('%s').read(8192)\"" % url
 
-            # Read 8192
             url_d['stdout'] = ''
             url_d['url_hook_process'] = w.hook_process(cmd, 30 * 1000, "url_process_cb", "")
 
@@ -205,9 +208,9 @@ def url_process_cb(data, command, rc, stdout, stderr):
                         w.command('', '/notice -server %s %s %s' %(server, buffer, output))
                         found = True
                 if found == False:
-                    w.prnt(w.buffer_search('', buffer_name), 'URL title\t' +output)
+                    say(output,w.buffer_search('', buffer_name))
             else:
-                w.prnt(w.buffer_search('', buffer_name), 'URL title\t' +output)
+                say(output,w.buffer_search('', buffer_name))
         urls[url]['stdout'] = ''
 
     return w.WEECHAT_RC_OK
@@ -242,3 +245,13 @@ if __name__ == "__main__":
             0,
             "purge_cb",
             '')
+    color_chat_delimiters = weechat.color('chat_delimiters')
+    color_chat_nick       = weechat.color('chat_nick')
+    color_reset           = weechat.color('reset')
+    color_chat_buffer     = weechat.color('chat_buffer')
+    # pretty printing
+    script_nick = '%s[%s%s%s]%s' %(color_chat_delimiters,
+                                   color_chat_nick,
+                                   w.config_get_plugin('global_prefix'),
+                                   color_chat_delimiters,
+                                   color_reset)
