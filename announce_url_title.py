@@ -74,7 +74,7 @@ from fnmatch import fnmatch
 
 SCRIPT_NAME    = "announce_url_title"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "11"
+SCRIPT_VERSION = "12"
 SCRIPT_LICENSE = "GPL"
 SCRIPT_DESC    = "Announce URL titles to channel or locally"
 
