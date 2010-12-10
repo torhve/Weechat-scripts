@@ -26,6 +26,8 @@
 #
 #
 # History:
+# 2010-12-10,
+#   - Various small fixes, put searches in separate buffer
 # 2010-10-01,
 #   - Various small fixes, html entities, etc
 # 2010-09-23, xt
@@ -52,7 +54,7 @@ socket.setdefaulttimeout(SOCKETTIMEOUT)
 
 SCRIPT_NAME    = "tweechat"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "0.5"
+SCRIPT_VERSION = "0.6"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Microblog client for weechat"
 SCRIPT_COMMAND = 'twitter'
@@ -69,7 +71,6 @@ settings = {
 }
 
 
-twitter_buffer           = ""
 twitter_list             = []
 twitter_lastid           = 0
 twitter_search_lastid    = 0
@@ -120,14 +121,44 @@ def dt2lt(dt):
     timestamp -= time.timezone
     return timestamp
 
-def print_line(line, timestamp=int(time.time())):
-    ''' Print a line in the twitter buffer '''
+def get_twitter_buffer(name=''):
+    twitter_buffer = ''
+    if name:
+        twitter_buffer = w.buffer_search("python", BUFFER_NAME + '.' + name)
+    else:
+        twitter_buffer = w.buffer_search("python", BUFFER_NAME)
 
-    global twitter_buffer
+    if not twitter_buffer:
+        return twitter_buffer_create(name)
+
+    return twitter_buffer
+
+def twitter_buffer_create(name=''):
+    """ Create twitter buffer. """
+    buffer_name = BUFFER_NAME
+    if name:
+        buffer_name += '.' + name
+    twitter_buffer = w.buffer_new(buffer_name ,
+                                        "twitter_buffer_input", "",
+                                        "twitter_buffer_close", "")
+    set_title()
+    w.buffer_set(twitter_buffer, "time_for_each_line", "1")
+    # Configure logging
+    if not w.config_get_plugin('logging') == 'on':
+        w.buffer_set(twitter_buffer, "localvar_set_no_log", "1")
+    w.buffer_set(twitter_buffer, "localvar_set_server", SCRIPT_NAME)
+    w.buffer_set(twitter_buffer, "localvar_set_channel", buffer_name )
+    w.buffer_set(twitter_buffer, "short_name", buffer_name)
+    w.buffer_set(twitter_buffer, "localvar_set_nick", w.config_get_plugin('username'))
+    w.buffer_set(twitter_buffer, "nicklist", "1")
+    return twitter_buffer
+
+def print_line(line, timestamp=int(time.time()), buffer_name=''):
+    ''' Print a line in the twitter buffer '''
 
     #w.buffer_set(twitter_buffer, "unread", "1")
     line = tweepy.utils.unescape_html(line.encode(encoding))
-    w.prnt_date_tags(twitter_buffer, timestamp,"notify_message", line)
+    w.prnt_date_tags(get_twitter_buffer(buffer_name), timestamp,"notify_message", line)
 
 def get_nick_color(nick):
     if nick != w.config_get_plugin('username'):
@@ -158,17 +189,16 @@ def search_display(twitters):
 
         text = unicode(status.text)
         timestamp = dt2lt(status.created_at)
-        print_line( "%s%s%s%s" %(nick_color, nick, separator, text), timestamp)
+        print_line( "%s%s%s%s" %(nick_color, nick, separator, text), timestamp, twitter_current_search)
 
 
 def title_cb(*kwargs):
     ''' Callback used to set title, used to update char counter '''
-    global twitter_buffer
 
-    if not weechat.current_buffer() == twitter_buffer:
+    if not weechat.current_buffer() == get_twitter_buffer():
         return w.WEECHAT_RC_OK
     title = False
-    input_content = w.buffer_get_string(twitter_buffer, "input")
+    input_content = w.buffer_get_string(get_twitter_buffer(), "input")
     if input_content.startswith('tweet '):
         length = len(input_content) - 6
         title = 'Tweet char counter: %s' %length
@@ -177,34 +207,13 @@ def title_cb(*kwargs):
     return w.WEECHAT_RC_OK
 
 def set_title(new_title=False):
-    global twitter_buffer
 
     title = 'Get help with /help twitter'
     if new_title:
         title = new_title
 
-    w.buffer_set(twitter_buffer, "title", SCRIPT_NAME + " " + SCRIPT_VERSION + " " + title)
+    w.buffer_set(get_twitter_buffer(), "title", SCRIPT_NAME + " " + SCRIPT_VERSION + " " + title)
 
-def twitter_buffer_create():
-    """ Create twitter buffer. """
-    global twitter_buffer
-    twitter_buffer = w.buffer_search("python", BUFFER_NAME)
-    if twitter_buffer == "":
-        twitter_buffer = w.buffer_new(BUFFER_NAME,
-                                        "twitter_buffer_input", "",
-                                        "twitter_buffer_close", "")
-    if twitter_buffer != "":
-        set_title()
-        w.buffer_set(twitter_buffer, "time_for_each_line", "1")
-
-        # Configure logging
-        if not w.config_get_plugin('logging') == 'on':
-            w.buffer_set(twitter_buffer, "localvar_set_no_log", "1")
-        w.buffer_set(twitter_buffer, "localvar_set_server", "tweechat")
-        w.buffer_set(twitter_buffer, "localvar_set_channel", BUFFER_NAME )
-        w.buffer_set(twitter_buffer, "short_name", BUFFER_NAME)
-        w.buffer_set(twitter_buffer, "localvar_set_nick", w.config_get_plugin('username'))
-        w.buffer_set(twitter_buffer, "nicklist", "1")
 
 
 
@@ -219,25 +228,18 @@ def twitter_sched_cb(*kwargs):
 def add_nick(nick):
     ''' Add given nick to nicklist '''
 
-    global twitter_buffer
-
-    w.nicklist_add_nick(twitter_buffer, "", nick, 'bar_fg', '', '', 1)
+    w.nicklist_add_nick(get_twitter_buffer(), "", nick, 'bar_fg', '', '', 1)
 
 def remove_nick(nick):
     ''' Remove given nick from nicklist '''
 
-    global twitter_buffer
-
-    ptr_nick_gui = w.nicklist_search_nick(twitter_buffer, "", nick)
-    w.nicklist_remove_nick(twitter_buffer, ptr_nick_gui)
+    ptr_nick_gui = w.nicklist_search_nick(get_twitter_buffer(), "", nick)
+    w.nicklist_remove_nick(get_twitter_buffer(), ptr_nick_gui)
 
 def twitter_get(args=None):
     """ Get some twitters  """
-    global twitter_buffer, twitter_list, api, twitter_lastid, twitter_current_search, twitter_search_lastid
+    global twitter_list, api, twitter_lastid, twitter_current_search, twitter_search_lastid
     # open buffer if needed
-    if twitter_buffer == "":
-        twitter_buffer_create()
-
     try:
 
         if not api:
@@ -268,7 +270,7 @@ def twitter_get(args=None):
 
         if twitter_current_search:
             if twitter_search_lastid:
-                search_results = api.search(twitter_current_search,since_id=twitter_search_lastid)
+                search_results = api.search(twitter_current_search, since_id=twitter_search_lastid)
             else:
                 search_results = api.search(twitter_current_search)
             if search_results:
@@ -278,9 +280,9 @@ def twitter_get(args=None):
         if 'timed out' in str(u): # ignore timeouts, happens pretty often
             pass
         else:
-            w.prnt(twitter_buffer, failwhale %'Error: %s' %u)
+            w.prnt(get_twitter_buffer(), failwhale %'Error: %s' %u)
     #except Exception, e:
-    #    w.prnt(twitter_buffer, failwhale %'Error: %s' %e)
+    #    w.prnt(get_twitter_buffer(), failwhale %'Error: %s' %e)
 
 def twitter_buffer_input(data, buffer, input_data):
     """ Read data from user in twitter buffer. """
@@ -311,15 +313,14 @@ def twitter_buffer_input(data, buffer, input_data):
             print_line('%s<--%s\tNot following %s anymore' %(prefix_color, w.color('reset'), user))
             remove_nick(user)
     except Exception, e:
-        w.prnt(twitter_buffer, failwhale %'Error: %s' %e)
+        w.prnt(get_twitter_buffer(), failwhale %'Error: %s' %e)
 
     return w.WEECHAT_RC_OK
 
 def twitter_buffer_close(data, buffer):
     """ User closed twitter buffer. Oh no, why? """
     global twitter_buffer
-    w.nicklist_remove_all(twitter_buffer)
-    twitter_buffer = ""
+    w.nicklist_remove_all(get_twitter_buffer())
     return w.WEECHAT_RC_OK
 
 def twitter_cmd(data, buffer, args):
@@ -329,6 +330,5 @@ def twitter_cmd(data, buffer, args):
     else:
         twitter_get("last")
     return w.WEECHAT_RC_OK
-
 
 w.command('', '/twitter')
