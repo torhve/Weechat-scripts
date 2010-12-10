@@ -157,7 +157,8 @@ def print_line(line, timestamp=int(time.time()), buffer_name=''):
     ''' Print a line in the twitter buffer '''
 
     #w.buffer_set(twitter_buffer, "unread", "1")
-    line = tweepy.utils.unescape_html(line.encode(encoding))
+    line = tweepy.utils.unescape_html(line)#.encode(encoding))
+    line = line.encode(encoding)
     w.prnt_date_tags(get_twitter_buffer(buffer_name), timestamp,"notify_message", line)
 
 def get_nick_color(nick):
