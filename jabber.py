@@ -72,7 +72,6 @@ SCRIPT_COMMAND = SCRIPT_NAME
 
 import re
 import warnings
-import random
 
 import_ok = True
 
