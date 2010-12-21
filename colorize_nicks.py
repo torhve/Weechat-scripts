@@ -22,7 +22,9 @@
 #
 # History:
 # 2010-12-20, xt
-#   version 0.8: hook new config option for weechat 0.3.4 
+#   version 0.9: hook new config option for weechat 0.3.4 
+# 2010-11-01, nils_2
+#   version 0.8: hook_modifier() added to communicate with rainbow_text
 # 2010-10-01, xt
 #   version 0.7: changes to support non-irc-plugins
 # 2010-07-29, xt
@@ -44,7 +46,7 @@ w = weechat
 
 SCRIPT_NAME    = "colorize_nicks"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "0.8"
+SCRIPT_VERSION = "0.9"
 SCRIPT_LICENSE = "GPL"
 SCRIPT_DESC    = "Use the weechat nick colors in the chat area"
 
@@ -196,5 +198,4 @@ if __name__ == "__main__":
         w.hook_modifier('weechat_print', 'colorize_cb', '')
         # Hook config for changing colors
         w.hook_config('weechat.color.chat_nick_colors', 'populate_nicks', '')
-
-
+        w.hook_modifier('colorize_nicks', 'colorize_cb', '')
