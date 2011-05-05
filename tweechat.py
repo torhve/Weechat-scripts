@@ -178,7 +178,7 @@ def twitter_display(twitters):
 
 
         text = unicode(status.text)
-        timestamp = dt2lt(status.created_at)
+        timestamp = int(dt2lt(status.created_at))
         print_line( "%s%s%s%s" %(nick_color, nick, separator, text), timestamp)
 
 def search_display(twitters):
@@ -282,8 +282,8 @@ def twitter_get(args=None):
             pass
         else:
             w.prnt(get_twitter_buffer(), failwhale %'Error: %s' %u)
-    #except Exception, e:
-    #    w.prnt(get_twitter_buffer(), failwhale %'Error: %s' %e)
+    except Exception, e:
+        w.prnt(get_twitter_buffer(), failwhale %'Error: %s' %e)
 
 def twitter_buffer_input(data, buffer, input_data):
     """ Read data from user in twitter buffer. """
