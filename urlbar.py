@@ -22,6 +22,10 @@
 # (this script requires WeeChat 0.3.0 or newer)
 #
 # History:
+# 2011-09-22, xt <xt@bash.no
+#     version 12: Fix bug with empty url list
+# 2011-02-23, xt <xt@bash.no>
+#     version 11: Introduce new flag display_current_only
 # 2010-12-20, xt <xt@bash.no>
 #     version 10: use API for nick color, strip nick prefix
 # 2009-12-17, FlashCode <flashcode@flashtux.org>
@@ -46,7 +50,7 @@
 
 SCRIPT_NAME    = "urlbar"
 SCRIPT_AUTHOR  = "FlashCode <flashcode@flashtux.org>"
-SCRIPT_VERSION = "10"
+SCRIPT_VERSION = "12"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Bar with URLs. For easy clicking or selecting."
 SCRIPT_COMMAND = "urlbar"
@@ -55,13 +59,14 @@ settings = {
     "visible_amount"        : '5',     # Amount of URLS visible in urlbar at any given time
     "visible_seconds"       : '5',     # Amount of seconds URLbar is visible
     "use_popup"             : 'on',    # Pop up automatically
-    "remember_amount"       : '25',    # Max amout of URLs to keep in RAM
+    "remember_amount"       : '50',    # Max amout of URLs to keep in RAM
     "ignore"                : 'grep',  # List of buffers to ignore. (comma separated)
     "show_timestamp"        : 'on',    # Show timestamp in list
     "show_nick"             : 'on',    # Show nick in list
     "show_buffername"       : 'on',    # Show buffer name in list
     "show_index"            : 'on',    # Show url index in list
     "time_format"           : '%H:%M', # Time format
+    "display_current_only"  : 'off',   # Only display & popup for URLs in current buffer
 }
 
 import_ok = True
@@ -71,7 +76,6 @@ except ImportError:
     print "This script must be run under WeeChat."
     print "Get WeeChat now at: http://www.weechat.org/"
     import_ok = False
-
 import re
 from time import strftime, localtime
 octet = r'(?:2(?:[0-4]\d|5[0-5])|1\d\d|\d{1,2})'
@@ -98,8 +102,6 @@ def urlbar_item_cb(data, item, window):
     except ValueError:
         weechat.prnt('', 'Invalid value for visible_amount setting.')
 
-    if not urls:
-        return 'Empty URL list'
 
     if DISPLAY_ALL:
         DISPLAY_ALL = False
@@ -107,14 +109,22 @@ def urlbar_item_cb(data, item, window):
     else:
         printlist = urls[-visible_amount:]
 
+    if not printlist:
+        return 'Empty URL list'
+
     result = ''
     for index, url in enumerate(printlist):
+        # Check for display current only
+        if weechat.config_get_plugin('display_current_only') == 'on':
+            if not get_buffer_name(weechat.current_buffer()) == url.buffername:
+                continue
         if weechat.config_get_plugin('show_index') == 'on':
             index = index+1
             result += '%s%2d%s %s \r' %\
                 (weechat.color("yellow"), index, weechat.color("bar_fg"), url)
         else:
             result += '%s%s \r' %(weechat.color('bar_fg'), url)
+
     return result
 
 
@@ -157,6 +167,15 @@ class URL(object):
             return 0
         return 1
 
+def popup():
+    """ display urlbar, then auto hide bar after delay"""
+    weechat.command("", "/bar show urlbar")
+    try:
+        weechat.command('', '/wait %s /bar hide urlbar' %
+                int(weechat.config_get_plugin('visible_seconds')))
+    except ValueError:
+        weechat.prnt('', 'Invalid visible_seconds')
+
 def urlbar_print_cb(data, buffer, time, tags, displayed, highlight, prefix, message):
 
 
@@ -165,7 +184,7 @@ def urlbar_print_cb(data, buffer, time, tags, displayed, highlight, prefix, mess
     for ignored_buffer in weechat.config_get_plugin('ignore').split(','):
         if ignored_buffer.lower() == buffer_name.lower():
             return weechat.WEECHAT_RC_OK
-       
+
     # Clean list of URLs
     for i in range(len(urls) - int(weechat.config_get_plugin('remember_amount'))):
         # Delete the oldest
@@ -178,13 +197,11 @@ def urlbar_print_cb(data, buffer, time, tags, displayed, highlight, prefix, mess
             continue
         urls.append(urlobject)
         if weechat.config_get_plugin('use_popup') == 'on':
-            weechat.command("", "/bar show urlbar")
-            # auto hide bar after delay
-            try:
-                weechat.command('', '/wait %s /bar hide urlbar' %
-                        int(weechat.config_get_plugin('visible_seconds')))
-            except ValueError:
-                weechat.prnt('', 'Invalid visible_seconds')
+            # Check if URL is in current buffer
+            if weechat.config_get_plugin('display_current_only') == 'on' and weechat.current_buffer() == buffer:
+                popup()
+            if weechat.config_get_plugin('display_current_only') != 'on':
+                popup()
 
         weechat.bar_item_update("urlbar_urls")
 
@@ -229,9 +246,12 @@ def irc_nick_find_color(nick):
         # probably we're in WeeChat 0.3.0
         color %= weechat.config_integer(weechat.config_get("weechat.look.color_nicks_number"))
         color = weechat.config_get('weechat.color.chat_nick_color%02d' %(color+1))
-        color = w.color(weechat.config_string(color))
+        color = weechat.color(weechat.config_string(color))
     return '%s%s%s' %(color, nick, weechat.color('reset'))
 
+def update_items(*args):
+    weechat.bar_item_update("urlbar_urls")
+    return weechat.WEECHAT_RC_OK
 
 if __name__ == "__main__" and import_ok:
     if weechat.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,
@@ -257,3 +277,5 @@ if __name__ == "__main__" and import_ok:
                         "vertical", "0", "0", "default", "default", "default", "0",
                         "urlbar_urls");
         weechat.hook_print("", "", "://", 1, "urlbar_print_cb", "")
+        if weechat.config_get_plugin('display_current_only') == 'on':
+            weechat.hook_signal('buffer_switch', 'update_items', '')
