@@ -95,6 +95,11 @@ def colorize_cb(data, modifier, modifier_data, line):
     min_length = int(w.config_get_plugin('min_nick_length'))
     reset = w.color('reset')
 
+
+    splitted = line.split('\t')
+
+    line_prefix, line = splitted[0], '\t'.join(splitted[1:])
+
     for words in valid_nick_re.findall(line):
         prefix, nick = words[0], words[1]
         # Check that nick is not ignored and longer than minimum length
@@ -104,7 +109,7 @@ def colorize_cb(data, modifier, modifier_data, line):
             nick_color = colored_nicks[buffer][nick]
             line = line.replace(nick, '%s%s%s' %(nick_color, nick, reset))
 
-    return line
+    return '%s\t%s' %(line_prefix, line)
 
 
 def populate_nicks(*args):

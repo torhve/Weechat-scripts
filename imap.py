@@ -40,6 +40,7 @@ down arrow for next message
 '''
 
 import weechat as w
+weechat = w
 import time
 from datetime import datetime
 import imaplib as i
@@ -213,13 +214,16 @@ def buffer_create():
 
 def irc_nick_find_color(nick, bgcolor='default'):
 
-    color = 0
-    for char in nick:
-        color += ord(char)
+    color = weechat.info_get('irc_nick_color', nick)
+    if not color:
+        # probably we're in WeeChat 0.3.0
+        color = 0
+        for char in nick:
+            color += ord(char)
 
-    color %= w.config_integer(w.config_get("weechat.look.color_nicks_number"))
-    color = w.config_get('weechat.color.chat_nick_color%02d' %(color+1))
-    color = w.config_string(color)
+        color %= w.config_integer(w.config_get("weechat.look.color_nicks_number"))
+        color = w.config_get('weechat.color.chat_nick_color%02d' %(color+1))
+        color = w.config_string(color)
     return '%s%s%s' %(w.color('%s,%s' %(color, bgcolor)), nick, w.color('reset'))
 
 def print_message():
