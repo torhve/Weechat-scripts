@@ -132,7 +132,7 @@ def away_cb(data, buffer, time, tags, display, hilight, prefix, msg):
         if prefix not in ignore_nick \
                 and channel not in ignore_channel \
                 and msg not in ignore_text:
-            last_buffer = w.buffer_get_string(buffer, 'plugin',) + '.' + \
+            last_buffer = w.buffer_get_string(buffer, 'plugin') + '.' + \
                           w.buffer_get_string(buffer, 'name')
             command = weechat.config_get_plugin('command')
             if not command.startswith('/'):
