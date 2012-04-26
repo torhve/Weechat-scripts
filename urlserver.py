@@ -106,13 +106,28 @@ class urldb(object):
             # Table already exists
             pass
 
-    def items(self, order_by='number'):
+    def items(self, order_by='number', search=''):
         urls_amount = int(urlserver_settings['urls_amount'])
-        execute = self.cursor.execute('select * from urls order by %s desc limit %s' %(order_by, urls_amount))
+        if search:
+            execute = self.cursor.execute('''
+            SELECT * FROM urls
+            WHERE
+                buffer_name LIKE '%%%(search)s%%'
+            OR
+                url LIKE '%%%(search)s%%'
+            OR
+                message LIKE '%%%(search)s%%'
+            OR
+                nick LIKE '%%%(search)s%%'
+            ORDER BY %(order_by)s DESC
+            LIMIT %(urls_amount)s
+                    ''' %locals())
+        else:
+            execute = self.cursor.execute('select * from urls order by %s desc limit %s' %(order_by, urls_amount))
         return self.cursor.fetchall()
 
     def get(self, number):
-        execute = self.cursor.execute('select * from urls where number =' %number)
+        execute = self.cursor.execute('select * from urls where number = "%s"' %number)
         row = self.cursor.fetchone()
         return row
 
@@ -229,27 +244,36 @@ def urlserver_server_favicon():
         # python 2.x
         return base64.b64decode(s)
 
-def urlserver_server_reply_list(conn, sort='-time'):
+def urlserver_server_reply_list(conn, sort='-time', search=''):
     """Send list of URLs as HTML page to client."""
     global urlserver, urlserver_settings
-    content = ['<ul class="urls">']
-    #if not sort.startswith('-'):
-    #    sort = '+%s' % sort
-    #if sort[1:] == 'time':
-    #    urls = sorted(urlserver['urls'].items())
-    #else:
-    #    idx = ['time', 'nick', 'buffer'].index(sort[1:])
-    #    urls = sorted(urlserver['urls'].items(), key=lambda url: url[1][idx].lower())
-    #if sort.startswith('-'):
-    #    urls.reverse()
-    #sortkey = { '-': ('', '&uarr;'), '+': ('-', '&darr;') }
-
+    if not sort.startswith('-'):
+        sort = '+%s' % sort
+    if sort[1:] == 'time':
+        urls = sorted(urlserver['urls'].items())
+    else:
+        idx = ['time', 'nick', 'buffer'].index(sort[1:])
+        urls = sorted(urlserver['urls'].items(), key=lambda url: url[1][idx].lower())
+    if sort.startswith('-'):
+        urls.reverse()
+    sortkey = { '-': ('', '&uarr;'), '+': ('-', '&darr;') }
     prefix = ''
+    content = ''
     if urlserver_settings['http_url_prefix']:
         prefix = '%s/' % urlserver_settings['http_url_prefix']
-    for item in urlserver['urls'].items():
+    for column, defaultsort in (('time', '-'), ('nick', ''), ('buffer', '')):
+        if sort[1:] == column:
+            content += '<div class="sortable sorted_by %s_header"><a href="/%ssort=%s%s">%s</a> %s</div>' % (column, prefix, sortkey[sort[0]][0], column, column.capitalize(), sortkey[sort[0]][1])
+        else:
+            content += '<div class="sortable %s_header"><a class="sort_link" href="/%ssort=%s%s">%s</a></div>' % (column, prefix, defaultsort, column, column.capitalize())
+
+    content += '<div class="sortable"><form method="get" action="/"><input type="text" name="search" value="%s" placeholder="Search"</input></form></div>' %search
+    content = ['<ul class="urls"><li class="bar"><h1>Weechat URLs<span>%s</span></li>' %content]
+
+    if urlserver_settings['http_url_prefix']:
+        prefix = '%s/' % urlserver_settings['http_url_prefix']
+    for item in urlserver['urls'].items(search=search):
         key = item[0]
-        prefix = item[6]
         nick = item[2]
         url = item[4]
         timestamp = item[1]
@@ -275,7 +299,7 @@ def urlserver_server_reply_list(conn, sort='-time'):
                 obj = '<div class="obj"><iframe id="%s" type="text/html" width="%d" height="%d" ' \
                     'src="http://www.youtube.com/embed/%s?enablejsapi=1"></iframe></div>' % (yid, width, height, yid)
         content.append('<li class="url">')
-        content.append('<h1>%s <span>%s</span> <span style="font-size:9px">%s</span></h1>%s %s' %(nick, buffer_name, time, message, obj))
+        content.append('<h1>%s <span>%s</span>   <span class="small">%s</span></h1>%s %s' %(nick, buffer_name, time, message, obj))
         content.append('</li>')
     content  = '\n'.join(content) + '\n</ul>'
     html = '''<html>
@@ -285,8 +309,9 @@ def urlserver_server_reply_list(conn, sort='-time'):
         <style type="text/css" media="screen">
         <!--
           html {
-            font-family: "Helvetica Neue", Arial, Helvetica; font-size: 12px; background: %s
-            font-size: 1em;
+            font-family: "Helvetica Neue", Arial, Helvetica; font-size: 12px;
+            background: #ddd;
+            font-size: 13px;
             line-height: 1em;
             color: #333;
           }
@@ -303,12 +328,43 @@ def urlserver_server_reply_list(conn, sort='-time'):
             color: #999;
             font-size: 13px;
           }
-          ul { width: auto;}
+        input {
+            width: 120px;
+            padding: 4px 9px;
+            margin: 0px 2px 0 0;
+            box-shadow: 2px 2px 3px #ccc inset;
+            -webkit-border-radius: 15px;
+            -moz-border-radius: 15px;
+            -o-border-radius: 15px;
+            border-radius: 15px;
+            outline: none;
+        }
+        .sortable {
+            float: right;
+            padding: 1em;
+        }
+          .small {
+            font-size: 9px;
+        }
+          .bar {
+              background-color: #F4F4F4;
+              border-radius: 5px 5px 0 0;
+              -webkit-border-radius: 5px 5px 0 0;
+              -moz-border-radius: 5px 5px 0 0;
+              height: 43px;
+              overflow: hidden;
+              box-shadow: 0 1px #fff inset, 0 -1px #ddd inset;
+              -moz-box-shadow: 0 1px #fff inset, 0 -1px #ddd inset;
+              -webkit-box-shadow: 0 1px #fff inset, 0 -1px #ddd inset;
+          }
+          ul { width: auto;
+            border: 1px left solid #222;
+          }
           img { max-width: 100%%; }
           li { list-style: none;
                background: white;
                padding: 1em;
-               }
+           }
            li:nth-child(even) {background: #f9f9f9}
            div.obj { margin-top: 1em; }
         -->
@@ -317,7 +373,7 @@ def urlserver_server_reply_list(conn, sort='-time'):
         <body>
             %s
         </body>
-        </html>''' % (urlserver_settings['http_bg_color'], content)
+        </html>''' % (content)
     urlserver_server_reply(conn, '200 OK', '', html)
 
 def urlserver_server_fd_cb(data, fd):
@@ -342,6 +398,7 @@ def urlserver_server_fd_cb(data, fd):
         return weechat.WEECHAT_RC_OK
     replysent = False
     sort = '-time'
+    search = ''
     m = re.search('^GET /(.*) HTTP/.*$', data, re.MULTILINE)
     if m:
         url = m.group(1)
@@ -357,15 +414,19 @@ def urlserver_server_fd_cb(data, fd):
             if urlserver_settings['http_url_prefix']:
                 if url.startswith(urlserver_settings['http_url_prefix']):
                     url = url[len(urlserver_settings['http_url_prefix']):]
-                    if url.startswith('/'):
-                        url = url[1:]
+                    url = url.lstrip('/?')
                 else:
                     prefixok = False
             # prefix ok, go on with url
             if prefixok:
+                url = url.lstrip('/?')
                 if url.startswith('sort='):
                     # sort asked for list of urls
                     sort = url[5:]
+                    url = ''
+                elif url.startswith('search='):
+                    # we should be searching
+                    search = url[7:]
                     url = ''
                 if url:
                     # short url, read base62 key and redirect to page
@@ -388,7 +449,7 @@ def urlserver_server_fd_cb(data, fd):
                         if not auth or base64.b64decode(auth.group(1)) != urlserver_settings['http_auth']:
                             authok = False
                     if authok:
-                        urlserver_server_reply_list(conn, sort)
+                        urlserver_server_reply_list(conn, sort, search)
                     else:
                         urlserver_server_reply(conn, '401 Authorization required',
                                                'WWW-Authenticate: Basic realm="%s"' % SCRIPT_NAME, '')
