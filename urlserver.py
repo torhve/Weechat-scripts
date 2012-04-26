@@ -234,7 +234,7 @@ def urlserver_server_reply_list(conn, sort='-time'):
                 obj = '<div class="obj"><iframe id="%s" type="text/html" width="%d" height="%d" ' \
                     'src="http://www.youtube.com/embed/%s?enablejsapi=1"></iframe></div>' % (yid, width, height, yid)
         content.append('<li class="url">')
-        content.append('%s%s\n' % (message, obj))
+        content.append('%s %s %s|%s\n' % (item[0], item[2], message, obj))
         content.append('</li>')
     content  = '\n'.join(content) + '\n</ul>'
     html = '''<html>
@@ -243,12 +243,21 @@ def urlserver_server_reply_list(conn, sort='-time'):
         <meta http-equiv="content-type" content="text/html; charset=utf-8" />
         <style type="text/css" media="screen">
         <!--
-          html { font-family: "Helvetica Neue", Arial, Helvetica; font-size: 12px; background: %s }
-          .url span { padding: 5px; }
-          li { list-style: none; }
-          .nowrap { white-space: nowrap }
-          .obj { text-align: left; margin-top: 1em }
-        -->'
+          html {
+            font-family: "Helvetica Neue", Arial, Helvetica; font-size: 12px; background: %s
+            font-size: 1em;
+            line-height: 1em;
+            color: #333;
+          }
+          ul { width: auto;}
+          img { max-width: 100%%; }
+          li { list-style: none;
+               background: white;
+               padding: 1em;
+               }
+           li:nth-child(even) {background: #f9f9f9}
+           div.obj { margin-top: 1em; }
+        -->
         </style>
         </head>
         <body>
