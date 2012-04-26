@@ -98,13 +98,17 @@ class urldb(object):
         self.conn = sqlite3.connect(filename)
         self.cursor = self.conn.cursor()
         #weechat.prnt('', '%surlserver: error reading database "%s"' % (weechat.prefix('error'), filename))
-        self.cursor.execute('''CREATE TABLE urls
+        try:
+            self.cursor.execute('''CREATE TABLE urls
                              (number integer PRIMARY KEY AUTOINCREMENT, time integer, nick text, buffer_name text, url text, message text, prefix text)''')
-        self.conn.commit()
+            self.conn.commit()
+        except sqlite3.OperationalError, e:
+            # Table already exists
+            pass
 
     def items(self, order_by='number'):
         urls_amount = int(urlserver_settings['urls_amount'])
-        execute = self.cursor.execute('select * from urls order by %s limit %s' %(order_by, urls_amount))
+        execute = self.cursor.execute('select * from urls order by %s desc limit %s' %(order_by, urls_amount))
         return self.cursor.fetchall()
 
     def get(self, number):
@@ -245,7 +249,12 @@ def urlserver_server_reply_list(conn, sort='-time'):
         prefix = '%s/' % urlserver_settings['http_url_prefix']
     for item in urlserver['urls'].items():
         key = item[0]
+        prefix = item[6]
+        nick = item[2]
         url = item[4]
+        timestamp = item[1]
+        time = datetime.datetime.fromtimestamp(timestamp)
+        buffer_name = item[3]
         obj = ''
         message = cgi.escape(item[5].replace(url, '\x01\x02\x03\x04')).split('\t', 1)
         strjoin = ' %s ' % urlserver_settings['http_prefix_suffix'].replace(' ', '&nbsp;')
@@ -266,7 +275,7 @@ def urlserver_server_reply_list(conn, sort='-time'):
                 obj = '<div class="obj"><iframe id="%s" type="text/html" width="%d" height="%d" ' \
                     'src="http://www.youtube.com/embed/%s?enablejsapi=1"></iframe></div>' % (yid, width, height, yid)
         content.append('<li class="url">')
-        content.append('%s %s %s|%s\n' % (item[1], item[3], message, obj))
+        content.append('<h1>%s <span>%s</span> <span style="font-size:9px">%s</span></h1>%s %s' %(nick, buffer_name, time, message, obj))
         content.append('</li>')
     content  = '\n'.join(content) + '\n</ul>'
     html = '''<html>
@@ -280,6 +289,19 @@ def urlserver_server_reply_list(conn, sort='-time'):
             font-size: 1em;
             line-height: 1em;
             color: #333;
+          }
+          a {
+            color: #00a5f0;
+            text-decoration: none;
+          }
+          h1 {
+              color: #222;
+              font-size: 18px;
+              font-weight: normal;
+          }
+          span {
+            color: #999;
+            font-size: 13px;
           }
           ul { width: auto;}
           img { max-width: 100%%; }
