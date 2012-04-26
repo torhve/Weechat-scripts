@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2011-2012 Sebastien Helleu <flashcode@flashtux.org>
-# Copyright (C) 2011 xt <xt@bash.no>
+# Copyright (C) 2011-2012 xt <xt@bash.no>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -43,6 +43,8 @@
 #
 # History:
 #
+# 2012-04-29, Tor Hveem <xt@bash.no>:
+#   version 0.7: improve html, save to SQL
 # 2012-01-19, Sebastien Helleu <flashcode@flashtux.org>:
 #     version 0.6: add option "http_hostname_display"
 # 2012-01-03, Sebastien Helleu <flashcode@flashtux.org>:
@@ -78,7 +80,7 @@ except ImportError:
     import_ok = False
 
 try:
-    import sys, os, string, ast, datetime, socket, re, base64, cgi
+    import sys, os, string, time, datetime, socket, re, base64, cgi, sqlite3
 except ImportError as message:
     print('Missing package(s) for %s: %s' % (SCRIPT_NAME, message))
     import_ok = False
@@ -89,12 +91,40 @@ url_ipaddr = r'%s(?:\.%s){3}' % (url_octet, url_octet)
 url_label = r'[0-9a-z][-0-9a-z]*[0-9a-z]?'
 url_domain = r'%s(?:\.%s)*\.[a-z][-0-9a-z]*[a-z]?' % (url_label, url_label)
 
+class urldb(object):
+
+    def __init__(self):
+        filename = os.path.join(weechat.info_get('weechat_dir', ''), 'urlserver.sqlite3')
+        self.conn = sqlite3.connect(filename)
+        self.cursor = self.conn.cursor()
+        #weechat.prnt('', '%surlserver: error reading database "%s"' % (weechat.prefix('error'), filename))
+        self.cursor.execute('''CREATE TABLE urls
+                             (number integer PRIMARY KEY AUTOINCREMENT, time integer, nick text, buffer_name text, url text, message text, prefix text)''')
+        self.conn.commit()
+
+    def items(self, order_by='number'):
+        urls_amount = int(urlserver_settings['urls_amount'])
+        execute = self.cursor.execute('select * from urls order by %s limit %s' %(order_by, urls_amount))
+        return self.cursor.fetchall()
+
+    def get(self, number):
+        execute = self.cursor.execute('select * from urls where number =' %number)
+        row = self.cursor.fetchone()
+        return row
+
+    def insert(self, time, nick, buffer_name, url, message, prefix):
+        execute = self.cursor.execute("insert into urls values (NULL, ?, ?, ?, ?, ?, ?)" ,(time, nick, buffer_name, url, message, prefix))
+        self.conn.commit()
+
+    def close(self):
+        self.conn.commit()
+        self.cursor.close()
+        self.conn.close()
+
 urlserver = {
     'socket'        : None,
     'hook_fd'       : None,
     'regex'         : re.compile(r'(\w+://(?:%s|%s)(?::\d+)?(?:/[^\])>\s]*)?)' % (url_domain, url_ipaddr), re.IGNORECASE),
-    'urls'          : {},
-    'number'        : 0,
     'buffer'        : '',
 }
 
@@ -199,23 +229,25 @@ def urlserver_server_reply_list(conn, sort='-time'):
     """Send list of URLs as HTML page to client."""
     global urlserver, urlserver_settings
     content = ['<ul class="urls">']
-    if not sort.startswith('-'):
-        sort = '+%s' % sort
-    if sort[1:] == 'time':
-        urls = sorted(urlserver['urls'].items())
-    else:
-        idx = ['time', 'nick', 'buffer'].index(sort[1:])
-        urls = sorted(urlserver['urls'].items(), key=lambda url: url[1][idx].lower())
-    if sort.startswith('-'):
-        urls.reverse()
-    sortkey = { '-': ('', '&uarr;'), '+': ('-', '&darr;') }
+    #if not sort.startswith('-'):
+    #    sort = '+%s' % sort
+    #if sort[1:] == 'time':
+    #    urls = sorted(urlserver['urls'].items())
+    #else:
+    #    idx = ['time', 'nick', 'buffer'].index(sort[1:])
+    #    urls = sorted(urlserver['urls'].items(), key=lambda url: url[1][idx].lower())
+    #if sort.startswith('-'):
+    #    urls.reverse()
+    #sortkey = { '-': ('', '&uarr;'), '+': ('-', '&darr;') }
+
     prefix = ''
     if urlserver_settings['http_url_prefix']:
         prefix = '%s/' % urlserver_settings['http_url_prefix']
-    for key, item in urls:
-        url = item[3]
+    for item in urlserver['urls'].items():
+        key = item[0]
+        url = item[4]
         obj = ''
-        message = cgi.escape(item[4].replace(url, '\x01\x02\x03\x04')).split('\t', 1)
+        message = cgi.escape(item[5].replace(url, '\x01\x02\x03\x04')).split('\t', 1)
         strjoin = ' %s ' % urlserver_settings['http_prefix_suffix'].replace(' ', '&nbsp;')
         message = strjoin.join(message).replace('\x01\x02\x03\x04', '<a href="%s" title="%s">%s</a>' % (urlserver_short_url(key), url, url))
         if urlserver_settings['http_embed_image'] == 'on' and url.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg')):
@@ -234,7 +266,7 @@ def urlserver_server_reply_list(conn, sort='-time'):
                 obj = '<div class="obj"><iframe id="%s" type="text/html" width="%d" height="%d" ' \
                     'src="http://www.youtube.com/embed/%s?enablejsapi=1"></iframe></div>' % (yid, width, height, yid)
         content.append('<li class="url">')
-        content.append('%s %s %s|%s\n' % (item[0], item[2], message, obj))
+        content.append('%s %s %s|%s\n' % (item[1], item[3], message, obj))
         content.append('</li>')
     content  = '\n'.join(content) + '\n</ul>'
     html = '''<html>
@@ -320,11 +352,11 @@ def urlserver_server_fd_cb(data, fd):
                         number = base62_decode(url)
                     except:
                         pass
-                    if number >= 0 and number in urlserver['urls']:
+                    if number >= 0:
                         # no redirection with "Location:" because it sends HTTP referer
                         #conn.send('HTTP/1.1 302 Found\nLocation: %s\n' % urlserver['urls'][number][2])
                         urlserver_server_reply(conn, '200 OK', '',
-                                               '<meta http-equiv="refresh" content="0; url=%s">' % urlserver['urls'][number][3])
+                                               '<meta http-equiv="refresh" content="0; url=%s">' % urlserver['urls'].get(number)[4])
                         replysent = True
                 else:
                     # page with list of urls
@@ -403,7 +435,7 @@ def urlserver_server_restart():
 
 def urlserver_display_url_detail(key):
     global urlserver
-    url = urlserver['urls'][key]
+    url = urlserver['urls'].get(key)
     nick = url[1]
     if nick:
         nick += ' @ '
@@ -440,8 +472,9 @@ def urlserver_open_buffer():
         weechat.buffer_set(urlserver['buffer'], 'time_for_each_line', '0')
         weechat.buffer_set(urlserver['buffer'], 'print_hooks_enabled', '0')
         weechat.buffer_clear(urlserver['buffer'])
-        keys = sorted(urlserver['urls'])
-        for key in keys:
+        urls = urlserver['urls'].items()
+        for url in urls:
+            key = url[0]
             urlserver_display_url_detail(key)
         weechat.buffer_set(urlserver['buffer'], 'display', '1')
 
@@ -457,9 +490,10 @@ def urlserver_cmd_cb(data, buffer, args):
     elif args == 'status':
         urlserver_server_status()
     elif args == 'clear':
-        urlserver['urls'] = {}
-        urlserver['number'] = 0
-        weechat.prnt('', 'urlserver: list cleared')
+        #urlserver['urls'] = {}
+        #urlserver['number'] = 0
+        #weechat.prnt('', 'urlserver: list cleared')
+        weechat.prnt('', 'urlserver: clearing not implemented')
     else:
         urlserver_open_buffer()
     return weechat.WEECHAT_RC_OK
@@ -521,28 +555,15 @@ def urlserver_print_cb(data, buffer, time, tags, displayed, highlight, prefix, m
     # shorten URL(s) in message
     for url in urlserver['regex'].findall(message):
         if len(url) >= min_length:
-            if urlserver_settings['msg_ignore_dup_urls'] == 'on':
-                if [key for key, value in urlserver['urls'].items() if value[3] == url]:
-                    continue
-            number = urlserver['number']
-            urlserver['urls'][number] = (datetime.datetime.now().strftime('%d/%m/%y %H:%M'), nick, buffer_name, url, '%s\t%s' % (prefix, message))
+            # FIXME
+            #if urlserver_settings['msg_ignore_dup_urls'] == 'on':
+            #    if [key for key, value in urlserver['urls'].items() if value[3] == url]:
+            #        continue
+            urlserver['urls'].insert(time, nick, buffer_name, url, message, prefix)
             if urlserver_settings['display_urls'] == 'on':
                 weechat.prnt_date_tags(buffer, 0, 'no_log,notify_none', '%s%s' % (weechat.color(urlserver_settings['color']), urlserver_short_url(number)))
             if urlserver['buffer']:
                 urlserver_display_url_detail(number)
-            urlserver['number'] += 1
-
-    # remove old URLs if we have reach max list size
-    urls_amount = 50
-    try:
-        urls_amount = int(urlserver_settings['urls_amount'])
-        if urls_amount <= 0:
-            urls_amount = 50
-    except:
-        urls_amount = 50
-    while len(urlserver['urls']) > urls_amount:
-        keys = sorted(urlserver['urls'])
-        del urlserver['urls'][keys[0]]
 
     return weechat.WEECHAT_RC_OK
 
@@ -561,32 +582,11 @@ def urlserver_config_cb(data, option, value):
                     urlserver_server_restart()
     return weechat.WEECHAT_RC_OK
 
-def urlserver_filename():
-    """Return name of file used to store list of urls."""
-    return os.path.join(weechat.info_get('weechat_dir', ''), 'urlserver_list.txt')
-
-def urlserver_read_urls():
-    """Read file with URLs."""
-    global urlserver
-    filename = urlserver_filename()
-    if os.path.isfile(filename):
-        urlserver['number'] = 0
-        try:
-            urlserver['urls'] = ast.literal_eval(open(filename, 'r').read())
-            keys = sorted(urlserver['urls'])
-            if keys:
-                urlserver['number'] = keys[-1] + 1
-            else:
-                urlserver['number'] = 0
-        except:
-            weechat.prnt('', '%surlserver: error reading file "%s"' % (weechat.prefix('error'), filename))
 
 def urlserver_write_urls():
     """Write file with URLs."""
     global urlserver
-    keys = sorted(urlserver['urls'])
-    content = '{\n%s\n}\n' % '\n'.join(['  %d: %s,' % (key, str(urlserver['urls'][key])) for key in keys])
-    open(urlserver_filename(), 'w').write(content)
+    urlserver['urls'].close()
 
 def urlserver_end():
     """Script unloaded (oh no, why?)"""
@@ -633,8 +633,8 @@ if __name__ == '__main__' and import_ok:
         # start mini HTTP server
         urlserver_server_start()
 
-        # load urls from file
-        urlserver_read_urls()
+        # init db
+        urlserver['urls'] = urldb()
 
         # catch URLs in buffers
         weechat.hook_print("", "", "://", 1, "urlserver_print_cb", "")
