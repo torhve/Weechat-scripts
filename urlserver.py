@@ -85,6 +85,11 @@ except ImportError as message:
     print('Missing package(s) for %s: %s' % (SCRIPT_NAME, message))
     import_ok = False
 
+def regexp(expr, item):
+    reg = re.compile(expr)
+    return reg.search(item) is not None
+
+
 # regex are from urlbar.py, written by xt
 url_octet = r'(?:2(?:[0-4]\d|5[0-5])|1\d\d|\d{1,2})'
 url_ipaddr = r'%s(?:\.%s){3}' % (url_octet, url_octet)
@@ -97,6 +102,7 @@ class urldb(object):
         filename = os.path.join(weechat.info_get('weechat_dir', ''), 'urlserver.sqlite3')
         self.conn = sqlite3.connect(filename)
         self.cursor = self.conn.cursor()
+        self.conn.create_function("REGEXP", 2, regexp)
         #weechat.prnt('', '%surlserver: error reading database "%s"' % (weechat.prefix('error'), filename))
         try:
             self.cursor.execute('''CREATE TABLE urls
@@ -106,19 +112,19 @@ class urldb(object):
             # Table already exists
             pass
 
-    def items(self, order_by='number', search=''):
+    def items(self, order_by='time', search=''):
         urls_amount = int(urlserver_settings['urls_amount'])
         if search:
             execute = self.cursor.execute('''
             SELECT * FROM urls
             WHERE
-                buffer_name LIKE '%%%(search)s%%'
+                buffer_name REGEXP '%(search)s'
             OR
-                url LIKE '%%%(search)s%%'
+                url REGEXP '%(search)s'
             OR
-                message LIKE '%%%(search)s%%'
+                message REGEXP '%(search)s'
             OR
-                nick LIKE '%%%(search)s%%'
+                nick REGEXP '%(search)s'
             ORDER BY %(order_by)s DESC
             LIMIT %(urls_amount)s
                     ''' %locals())
