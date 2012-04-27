@@ -45,7 +45,7 @@
 # History:
 #
 # 2012-04-29, Tor Hveem <xt@bash.no>:
-#   version 10: improve html, save to SQL
+#   version 10: improve html, save to SQL, pagination
 # 2012-04-18, Filip H.F. "FiXato" Slagter <fixato+weechat+urlserver@gmail.com>:
 #     version 0.9: add options "http_autostart", "http_port_display"
 #                  "url_min_length" can now be set to -1 to auto-detect minimal url length
@@ -92,7 +92,7 @@ except ImportError:
     import_ok = False
 
 try:
-    import sys, os, string, time, datetime, socket, re, base64, cgi, sqlite3
+    import sys, os, string, time, datetime, socket, re, base64, cgi, sqlite3, urlparse
 except ImportError as message:
     print('Missing package(s) for %s: %s' % (SCRIPT_NAME, message))
     import_ok = False
@@ -118,30 +118,34 @@ class urldb(object):
         #weechat.prnt('', '%surlserver: error reading database "%s"' % (weechat.prefix('error'), filename))
         try:
             self.cursor.execute('''CREATE TABLE urls
-                             (number integer PRIMARY KEY AUTOINCREMENT, time integer, nick text, buffer_name text, url text, message text, prefix text)''')
+                             (number integer PRIMARY KEY AUTOINCREMENT,
+                             time integer,
+                             nick text,
+                             buffer_name text,
+                             url text,
+                             message text,
+                             prefix text)''')
             self.conn.commit()
         except sqlite3.OperationalError, e:
             # Table already exists
             pass
 
-    def items(self, order_by='time', search=''):
-        urls_amount = int(urlserver_settings['urls_amount'])
+    def items(self, order_by='time', search='', page=1, amount=100):
+        offset = int(page) * amount - amount
         if search:
-            execute = self.cursor.execute('''
-            SELECT * FROM urls
+            search ='''
             WHERE
-                buffer_name REGEXP '%(search)s'
+                buffer_name REGEXP '%s'
             OR
-                url REGEXP '%(search)s'
+                url REGEXP '%s'
             OR
-                message REGEXP '%(search)s'
+                message REGEXP '%s'
             OR
-                nick REGEXP '%(search)s'
-            ORDER BY %(order_by)s DESC
-            LIMIT %(urls_amount)s
-                    ''' %locals())
-        else:
-            execute = self.cursor.execute('select * from urls order by %s desc limit %s' %(order_by, urls_amount))
+                nick REGEXP '%s'
+                    ''' %(search, search, search, search)
+        sql ='select * from urls %s order by %s desc limit %s OFFSET %s' %(search, order_by, amount, offset)
+        weechat.prnt('', sql)
+        execute = self.cursor.execute(sql)
         return self.cursor.fetchall()
 
     def get(self, number):
@@ -150,8 +154,13 @@ class urldb(object):
         return row
 
     def insert(self, time, nick, buffer_name, url, message, prefix):
+        nick = nick.decode('UTF-8')
+        buffer_name = buffer_name.decode('UTF-8')
+        url = url.decode('UTF-8')
+        message = message.decode('UTF-8')
         execute = self.cursor.execute("insert into urls values (NULL, ?, ?, ?, ?, ?, ?)" ,(time, nick, buffer_name, url, message, prefix))
         self.conn.commit()
+        return self.cursor.lastrowid
 
     def close(self):
         self.conn.commit()
@@ -208,7 +217,6 @@ def base64_decode(s):
         # python 2.x
         return base64.b64decode(s)
 
-
 def base62_encode(number):
     """Encode a number in base62 (all digits + a-z + A-Z)."""
     base62chars = string.digits + string.ascii_letters
@@ -249,6 +257,7 @@ def urlserver_short_url(number):
 def urlserver_server_reply(conn, code, extra_header, message, mimetype='text/html'):
     """Send a HTTP reply to client."""
     global urlserver_settings
+
     if extra_header:
         extra_header += '\r\n'
     s = 'HTTP/1.1 %s\r\n' \
@@ -265,17 +274,18 @@ def urlserver_server_reply(conn, code, extra_header, message, mimetype='text/htm
             msg = s.encode('utf-8') + message
         else:
             conn.send(s.encode('utf-8') + message.encode('utf-8'))
-            msg = s.encode('utf-8') + message.encode('utf-8')
     else:
         # python 2.x
         msg = s + message
     if urlserver_settings['debug'] == 'on':
         weechat.prnt('', 'urlserver: sending %d bytes' % len(msg))
+    if type(msg) == type(u''):
+        msg = msg.encode('utf-8')
     conn.sendall(msg)
 
 def urlserver_server_favicon():
     """Return favicon for HTML page."""
-    s = 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH1wgcDwo4MOEy+AAAAB10' \
+    s = u'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH1wgcDwo4MOEy+AAAAB10' \
         'RVh0Q29tbWVudABDcmVhdGVkIHdpdGggVGhlIEdJTVDvZCVuAAADp0lEQVQ4y12TXUxbBRTH/733ttx+XFq+Ci2Ur8AEYSBIosnS+YJhauJY9mQyXfTBh8UEnclm1Gxq' \
         'YoJGfZkzqAkmQ2IicVOcwY1YyMZwWcfXVq2Ulpax3raX2y9ob29v7+31QViIJzkPJyfn//D7/48G+2r+6jzaO9oHFCjPCTkBM7MzF06eOhng/uHMFE2dUopKExthb3cf' \
         '6h4DUAAAar+A3WB/b21l7a3pW9NLPW099Vk+axn9aPRDkROvX3FdiRtpo9LX0XeMJMm/FUW5DQDE3vHSN0t9vhXfy+eGz00hjgk6TZfcWXajlq79ePLyZGLog6Gvm7XN' \
@@ -289,9 +299,10 @@ def urlserver_server_favicon():
         'mZ7ejSv5v50OQMnujH8BbzDFpcdRAIIAAAAASUVORK5CYII='
     return base64_decode(s)
 
-def urlserver_server_reply_list(conn, sort='-time', search=''):
+def urlserver_server_reply_list(conn, sort='-time', search='', page=1, amount=0):
     """Send list of URLs as HTML page to client."""
     global urlserver, urlserver_settings
+
     if not sort.startswith('-'):
         sort = '+%s' % sort
     if sort[1:] == 'time':
@@ -312,18 +323,25 @@ def urlserver_server_reply_list(conn, sort='-time', search=''):
         else:
             content += '<div class="sortable %s_header"><a class="sort_link" href="/%ssort=%s%s">%s</a></div>' % (column, prefix, defaultsort, column, column.capitalize())
 
-    content += '<div class="sortable"><form method="get" action="/"><input type="text" name="search" value="%s" placeholder="Search"</input></form></div>' %search
-    content = ['<ul class="urls"><li class="bar"><h1>Weechat URLs<span>%s</span></li>' %content]
+    content += '<div class="sortable"><form method="get" action="/"><input type="text" name="search" value="%s" placeholder="Search"></input></form></div>' %search
+    content = ['<ul class="urls"><li class="bar"><h1><a href="/%s">%s</a><span>%s</span></li>' %(prefix, urlserver_settings['http_title'], content) ]
 
-    if urlserver_settings['http_url_prefix']:
-        prefix = '%s/' % urlserver_settings['http_url_prefix']
-    for item in urlserver['urls'].items(search=search):
+
+    weechat.prnt('', 'asdf: %s,%s' %(page, search))
+    amount = int(amount)
+    if not amount:
+        amount = int(urlserver_settings['urls_amount'])
+
+    for item in urlserver['urls'].items(search=search, page=page, amount=amount):
         key = item[0]
         nick = item[2]
         url = item[4]
         timestamp = item[1]
         time = datetime.datetime.fromtimestamp(timestamp)
         buffer_name = item[3]
+        if not nick: # Message without nick tag set, use prefix instead
+            nick = item[6]
+
         obj = ''
         message = cgi.escape(item[5].replace(url, '\x01\x02\x03\x04')).split('\t', 1)
         strjoin = ' %s ' % urlserver_settings['http_prefix_suffix'].replace(' ', '&nbsp;')
@@ -351,14 +369,15 @@ def urlserver_server_reply_list(conn, sort='-time', search=''):
         css = '<link rel="stylesheet" type="text/css" href="%s" />' % urlserver_settings['http_css_url']
     else:
         css = ''
-    html = '''<html>
+    html = '''<!DOCTYPE html>
+    <html lang="en">
         <head>
         <title>%s</title>
         <meta http-equiv="content-type" content="text/html; charset=utf-8" />
         <style type="text/css" media="screen">
         <!--
           html {
-            font-family: "Helvetica Neue", Arial, Helvetica; font-size: 12px;
+            font-family: "Helvetica Neue", Arial, Helvetica;
             background: #ddd;
             font-size: 13px;
             line-height: 1em;
@@ -452,9 +471,10 @@ def urlserver_server_fd_cb(data, fd):
     m = re.search('^GET /(.*) HTTP/.*$', data, re.MULTILINE)
     if m:
         url = m.group(1)
+        url = urlparse.urlparse(url)
         if urlserver_settings['debug'] == 'on':
             weechat.prnt('', 'urlserver: %s' % m.group(0))
-        if 'favicon.' in url:
+        if url.path == 'favicon.ico':
             urlserver_server_reply(conn, '200 OK', '',
                                    urlserver_server_favicon(), mimetype='image/x-icon')
             replysent = True
@@ -462,23 +482,11 @@ def urlserver_server_fd_cb(data, fd):
             # check if prefix is ok (if prefix defined in settings)
             prefixok = True
             if urlserver_settings['http_url_prefix']:
-                if url.startswith(urlserver_settings['http_url_prefix']):
-                    url = url[len(urlserver_settings['http_url_prefix']):]
-                    url = url.lstrip('/?')
-                else:
+                if not url.path.startswith(urlserver_settings['http_url_prefix']):
                     prefixok = False
-            # prefix ok, go on with url
-            if prefixok:
-                url = url.lstrip('/?')
-                if url.startswith('sort='):
-                    # sort asked for list of urls
-                    sort = url[5:]
-                    url = ''
-                elif url.startswith('search='):
-                    # we should be searching
-                    search = url[7:]
-                    url = ''
-                if url:
+            if prefixok: # prefix ok, go on with url
+                kwargs = dict(urlparse.parse_qsl(url.query))
+                if len(url.path) > 1:
                     # short url, read base62 key and redirect to page
                     number = -1
                     try:
@@ -491,22 +499,18 @@ def urlserver_server_fd_cb(data, fd):
                         urlserver_server_reply(conn, '200 OK', '',
                                                '<meta http-equiv="refresh" content="0; url=%s">' % urlserver['urls'].get(number)[4])
                         replysent = True
-                else:
-                    # page with list of urls
+                else: # page with list of urls
                     authok = True
                     if urlserver_settings['http_auth']:
                         auth = re.search('^Authorization: Basic (\S+)$', data, re.MULTILINE)
                         if not auth or base64_decode(auth.group(1)).decode('utf-8') != urlserver_settings['http_auth']:
                             authok = False
                     if authok:
-                        urlserver_server_reply_list(conn, sort, search)
+                        urlserver_server_reply_list(conn, **kwargs)
                     else:
                         urlserver_server_reply(conn, '401 Authorization required',
                                                'WWW-Authenticate: Basic realm="%s"' % SCRIPT_NAME, '')
                     replysent = True
-            else:
-                if urlserver_settings['debug'] == 'on':
-                    weechat.prnt('', 'urlserver: prefix missing')
     if not replysent:
         urlserver_server_reply(conn,
                                '404 Not found', '',
@@ -695,7 +699,7 @@ def urlserver_print_cb(data, buffer, time, tags, displayed, highlight, prefix, m
             #if urlserver_settings['msg_ignore_dup_urls'] == 'on':
             #    if [key for key, value in urlserver['urls'].items() if value[3] == url]:
             #        continue
-            urlserver['urls'].insert(time, nick, buffer_name, url, message, prefix)
+            number = urlserver['urls'].insert(time, nick, buffer_name, url, message, prefix)
             if urlserver_settings['display_urls'] == 'on':
                 weechat.prnt_date_tags(buffer, 0, 'no_log,notify_none', '%s%s' % (weechat.color(urlserver_settings['color']), urlserver_short_url(number)))
             if urlserver['buffer']:
