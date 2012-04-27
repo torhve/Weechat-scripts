@@ -131,7 +131,7 @@ class urldb(object):
             pass
 
     def items(self, order_by='time', search='', page=1, amount=100):
-        offset = int(page) * amount - amount
+        offset = page * amount - amount
         if search:
             search ='''
             WHERE
@@ -143,13 +143,17 @@ class urldb(object):
             OR
                 nick REGEXP '%s'
                     ''' %(search, search, search, search)
-        sql ='select * from urls %s order by %s desc limit %s OFFSET %s' %(search, order_by, amount, offset)
-        weechat.prnt('', sql)
+        sql ='''SELECT *
+            FROM urls
+            %s
+            ORDER BY %s desc
+            LIMIT %s OFFSET %s''' %(search, order_by, amount, offset)
         execute = self.cursor.execute(sql)
         return self.cursor.fetchall()
 
     def get(self, number):
-        execute = self.cursor.execute('select * from urls where number = "%s"' %number)
+        execute = self.cursor.execute('''
+            SELECT * FROM urls WHERE number = "%s"''' %number)
         row = self.cursor.fetchone()
         return row
 
@@ -158,7 +162,10 @@ class urldb(object):
         buffer_name = buffer_name.decode('UTF-8')
         url = url.decode('UTF-8')
         message = message.decode('UTF-8')
-        execute = self.cursor.execute("insert into urls values (NULL, ?, ?, ?, ?, ?, ?)" ,(time, nick, buffer_name, url, message, prefix))
+        execute = self.cursor.execute('''
+            INSERT INTO urls
+            VALUES (NULL, ?, ?, ?, ?, ?, ?)''',
+            (time, nick, buffer_name, url, message, prefix))
         self.conn.commit()
         return self.cursor.lastrowid
 
@@ -263,9 +270,9 @@ def urlserver_server_reply(conn, code, extra_header, message, mimetype='text/htm
     s = 'HTTP/1.1 %s\r\n' \
         '%s' \
         'Content-Type: %s\r\n' \
-        'Content-Length: %d\r\n' \
         '\r\n' \
-        % (code, extra_header, mimetype, len(message))
+        % (code, extra_header, mimetype)# FIXME, len(message))
+        #'Content-Length: %d\r\n' \ FIXME // this needs to be calculated after encoding
     msg = None
     if sys.version_info >= (3,):
         # python 3.x
@@ -319,18 +326,20 @@ def urlserver_server_reply_list(conn, sort='-time', search='', page=1, amount=0)
         prefix = '%s/' % urlserver_settings['http_url_prefix']
     for column, defaultsort in (('time', '-'), ('nick', ''), ('buffer', '')):
         if sort[1:] == column:
-            content += '<div class="sortable sorted_by %s_header"><a href="/%ssort=%s%s">%s</a> %s</div>' % (column, prefix, sortkey[sort[0]][0], column, column.capitalize(), sortkey[sort[0]][1])
+            content += '<div class="sortable sorted_by %s_header"><a href="/%s?sort=%s%s">%s</a> %s</div>' % (column, prefix, sortkey[sort[0]][0], column, column.capitalize(), sortkey[sort[0]][1])
         else:
-            content += '<div class="sortable %s_header"><a class="sort_link" href="/%ssort=%s%s">%s</a></div>' % (column, prefix, defaultsort, column, column.capitalize())
+            content += '<div class="sortable %s_header"><a class="sort_link" href="/%s?sort=%s%s">%s</a></div>' % (column, prefix, defaultsort, column, column.capitalize())
 
-    content += '<div class="sortable"><form method="get" action="/"><input type="text" name="search" value="%s" placeholder="Search"></input></form></div>' %search
+    content += '<div class="sortable"><form method="get"><input type="text" name="search" value="%s" placeholder="Search"></input></form></div>' %search
     content = ['<ul class="urls"><li class="bar"><h1><a href="/%s">%s</a><span>%s</span></li>' %(prefix, urlserver_settings['http_title'], content) ]
 
-
-    weechat.prnt('', 'asdf: %s,%s' %(page, search))
     amount = int(amount)
     if not amount:
         amount = int(urlserver_settings['urls_amount'])
+    try:
+        page = int(page)
+    except:
+        page = 1
 
     for item in urlserver['urls'].items(search=search, page=page, amount=amount):
         key = item[0]
@@ -364,6 +373,7 @@ def urlserver_server_reply_list(conn, sort='-time', search='', page=1, amount=0)
         content.append('<li class="url">')
         content.append('<h1>%s <span>%s</span>   <span class="small">%s</span></h1>%s %s' %(nick, buffer_name, time, message, obj))
         content.append('</li>')
+    content.append('<li><a href="?page=%d" rel="next" accesskey="n">Next page</a></li>' %(page+1))
     content  = '\n'.join(content) + '\n</ul>'
     if len(urlserver_settings['http_css_url']) > 0:
         css = '<link rel="stylesheet" type="text/css" href="%s" />' % urlserver_settings['http_css_url']
@@ -374,6 +384,16 @@ def urlserver_server_reply_list(conn, sort='-time', search='', page=1, amount=0)
         <head>
         <title>%s</title>
         <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <link rel="next" href="?page=%s">
+        <script type="text/javascript">
+            var nr = 2;
+            var scroll = function(evt) {
+                if (evt.keyCode == 32 || evt.keyCode == 34) {
+                   evt.preventDefault();
+                   document.querySelector('li:nth-child('+nr+++')').scrollIntoView(true);
+                }
+            }
+        </script>
         <style type="text/css" media="screen">
         <!--
           html {
@@ -439,10 +459,10 @@ def urlserver_server_reply_list(conn, sort='-time', search='', page=1, amount=0)
         </style>
         %s
         </head>
-        <body>
+        <body onkeypress="scroll(evt)">
             %s
         </body>
-        </html>''' % (urlserver_settings['http_title'], css, content)
+        </html>''' % (urlserver_settings['http_title'], page+1, css, content)
     urlserver_server_reply(conn, '200 OK', '', html)
 
 def urlserver_server_fd_cb(data, fd):
@@ -472,6 +492,7 @@ def urlserver_server_fd_cb(data, fd):
     if m:
         url = m.group(1)
         url = urlparse.urlparse(url)
+        path = url.path
         if urlserver_settings['debug'] == 'on':
             weechat.prnt('', 'urlserver: %s' % m.group(0))
         if url.path == 'favicon.ico':
@@ -482,15 +503,17 @@ def urlserver_server_fd_cb(data, fd):
             # check if prefix is ok (if prefix defined in settings)
             prefixok = True
             if urlserver_settings['http_url_prefix']:
-                if not url.path.startswith(urlserver_settings['http_url_prefix']):
+                if url.path.startswith(urlserver_settings['http_url_prefix']):
+                    path = path[len(urlserver_settings['http_url_prefix'])+1:]
+                else:
                     prefixok = False
             if prefixok: # prefix ok, go on with url
                 kwargs = dict(urlparse.parse_qsl(url.query))
-                if len(url.path) > 1:
+                if len(path) > 1:
                     # short url, read base62 key and redirect to page
                     number = -1
                     try:
-                        number = base62_decode(url)
+                        number = base62_decode(path)
                     except:
                         pass
                     if number >= 0:
