@@ -92,7 +92,7 @@ except ImportError:
     import_ok = False
 
 try:
-    import sys, os, string, time, datetime, socket, re, base64, cgi, sqlite3, urlparse
+    import sys, os, string, time, datetime, socket, re, base64, cgi, sqlite3, urlparse, urllib
 except ImportError as message:
     print('Missing package(s) for %s: %s' % (SCRIPT_NAME, message))
     import_ok = False
@@ -132,6 +132,10 @@ class urldb(object):
 
     def items(self, order_by='time', search='', page=1, amount=100):
         offset = page * amount - amount
+        if urlserver_settings['msg_ignore_dup_urls'] == 'on':
+            distinct = 'GROUP BY url'
+        else:
+            distinct = ''
         if search:
             search ='''
             WHERE
@@ -143,11 +147,15 @@ class urldb(object):
             OR
                 nick REGEXP '%s'
                     ''' %(search, search, search, search)
-        sql ='''SELECT *
+        sql ='''
+            SELECT
+            url, number, time, nick, buffer_name, message, prefix
             FROM urls
             %s
+            %s
             ORDER BY %s desc
-            LIMIT %s OFFSET %s''' %(search, order_by, amount, offset)
+            LIMIT %s OFFSET %s''' %(search, distinct, order_by, amount, offset)
+        weechat.prnt('', 'urlserver: SQL: %s' % sql)
         execute = self.cursor.execute(sql)
         return self.cursor.fetchall()
 
@@ -173,6 +181,10 @@ class urldb(object):
         self.conn.commit()
         self.cursor.close()
         self.conn.close()
+
+    @property
+    def rowcount(self):
+        return self.cursor.rowcount
 
 urlserver = {
     'socket'        : None,
@@ -205,12 +217,12 @@ urlserver_settings_default = {
     'msg_ignore_tags'    : ('irc_quit,irc_part,notify_none', 'comma-separated list (without spaces) of tags (or beginning of tags) to ignore (for example, use "notify_none" to ignore self messages or "nick_weebot" to ignore messages from nick "weebot")'),
     'msg_require_tags'   : ('nick_', 'comma-separated list (without spaces) of tags (or beginning of tags) required to shorten URLs (for example "nick_" to shorten URLs only in messages from other users)'),
     'msg_ignore_regex'   : ('', 'ignore messages matching this regex'),
-    'msg_ignore_dup_urls': ('off', 'ignore duplicated URLs (do not add an URL in list if it is already)'),
+    'msg_ignore_dup_urls': ('off', 'ignore duplicated URLs (do not show an URL twice, will make the script slower)'),
     # display settings
     'color'              : ('darkgray', 'color for urls displayed'),
     'display_urls'       : ('on', 'display URLs below messages'),
     'url_min_length'     : ('0', 'minimum length for an URL to be shortened (0 = shorten all URLs, -1 = detect length based on shorten URL)'),
-    'urls_amount'        : ('100', 'number of URLs to keep in memory (and in file when script is not loaded)'),
+    'urls_amount'        : ('50', 'number of URLs to keep in memory (and in file when script is not loaded)'),
     'buffer_short_name'  : ('off', 'use buffer short name on dedicated buffer'),
     'debug'              : ('off', 'print some debug messages'),
 }
@@ -309,16 +321,17 @@ def urlserver_server_favicon():
 def urlserver_server_reply_list(conn, sort='-time', search='', page=1, amount=0):
     """Send list of URLs as HTML page to client."""
     global urlserver, urlserver_settings
-
-    if not sort.startswith('-'):
-        sort = '+%s' % sort
-    if sort[1:] == 'time':
-        urls = sorted(urlserver['urls'].items())
-    else:
-        idx = ['time', 'nick', 'buffer'].index(sort[1:])
-        urls = sorted(urlserver['urls'].items(), key=lambda url: url[1][idx].lower())
-    if sort.startswith('-'):
-        urls.reverse()
+    #
+    # FIXME need to sqlify sorting
+    #if not sort.startswith('-'):
+    #    sort = '+%s' % sort
+    #if sort[1:] == 'time':
+    #    urls = sorted(urlserver['urls'].items())
+    #else:
+    #    idx = ['time', 'nick', 'buffer'].index(sort[1:])
+    #    urls = sorted(urlserver['urls'].items(), key=lambda url: url[1][idx].lower())
+    #if sort.startswith('-'):
+    #    urls.reverse()
     sortkey = { '-': ('', '&uarr;'), '+': ('-', '&darr;') }
     prefix = ''
     content = ''
@@ -331,7 +344,6 @@ def urlserver_server_reply_list(conn, sort='-time', search='', page=1, amount=0)
             content += '<div class="sortable %s_header"><a class="sort_link" href="/%s?sort=%s%s">%s</a></div>' % (column, prefix, defaultsort, column, column.capitalize())
 
     content += '<div class="sortable"><form method="get"><input type="text" name="search" value="%s" placeholder="Search"></input></form></div>' %search
-    content = ['<ul class="urls"><li class="bar"><h1><a href="/%s">%s</a><span>%s</span></li>' %(prefix, urlserver_settings['http_title'], content) ]
 
     amount = int(amount)
     if not amount:
@@ -340,14 +352,20 @@ def urlserver_server_reply_list(conn, sort='-time', search='', page=1, amount=0)
         page = int(page)
     except:
         page = 1
-
-    for item in urlserver['urls'].items(search=search, page=page, amount=amount):
-        key = item[0]
-        nick = item[2]
-        url = item[4]
-        timestamp = item[1]
+    urls = urlserver['urls'].items(search=search, page=page, amount=amount)
+    content = ['''<ul class="urls">
+        <li class="bar">
+            <h1><a href="/%s">%s</a>
+            <span class="small">Showing %s URLs</span>
+            <span>%s</span>
+        </li>''' %(prefix, urlserver_settings['http_title'], len(urls), content) ]
+    for item in urls:
+        url = item[0]
+        key = item[1]
+        timestamp = item[2]
+        nick = item[3]
         time = datetime.datetime.fromtimestamp(timestamp)
-        buffer_name = item[3]
+        buffer_name = item[4]
         if not nick: # Message without nick tag set, use prefix instead
             nick = item[6]
 
@@ -373,7 +391,12 @@ def urlserver_server_reply_list(conn, sort='-time', search='', page=1, amount=0)
         content.append('<li class="url">')
         content.append('<h1>%s <span>%s</span>   <span class="small">%s</span></h1>%s %s' %(nick, buffer_name, time, message, obj))
         content.append('</li>')
-    content.append('<li><a id="nextpage" href="?page=%d" rel="next" accesskey="n">Next page</a></li>' %(page+1))
+    attrs = {
+            'amount': amount,
+            'search': search,
+            'page': page+1,
+        }
+    content.append('<li><a id="nextpage" href="?%s" rel="next" accesskey="n">Next page</a></li>' %urllib.urlencode(attrs))
     content  = '\n'.join(content) + '\n</ul>'
     if len(urlserver_settings['http_css_url']) > 0:
         css = '<link rel="stylesheet" type="text/css" href="%s" />' % urlserver_settings['http_css_url']
@@ -458,8 +481,8 @@ def urlserver_server_reply_list(conn, sort='-time', search='', page=1, amount=0)
               -moz-box-shadow: 0 1px #fff inset, 0 -1px #ddd inset;
               -webkit-box-shadow: 0 1px #fff inset, 0 -1px #ddd inset;
           }
-          ul { width: auto;
-            border: 1px left solid #222;
+          ul {
+            width: auto;
           }
           img { max-width: 100%%; }
           li { list-style: none;
@@ -509,7 +532,10 @@ def urlserver_server_fd_cb(data, fd):
         if urlserver_settings['debug'] == 'on':
             weechat.prnt('', 'urlserver: %s' % m.group(0))
         if url.path == 'favicon.ico':
-            urlserver_server_reply(conn, '200 OK', '',
+            extra = 'Date: Sat, 27 Sep 2003 00:00:00 GMT\r\n' \
+                    'Last-Modified: Sat, 27 Sep 2003 00:00:00 GMT\r\n' \
+                    'Expires: Wed, 15 Nov 2100 00:00:00 GMT\r\n'
+            urlserver_server_reply(conn, '304 Not Modified', extra,
                                    urlserver_server_favicon(), mimetype='image/x-icon')
             replysent = True
         else:
@@ -561,7 +587,12 @@ def urlserver_server_status():
     """Display status of server."""
     global urlserver
     if urlserver['socket']:
-        weechat.prnt('', 'URL server listening on %s' % str(urlserver['socket'].getsockname()))
+        host, port = urlserver['socket'].getsockname()
+        user = urlserver_settings['http_auth']
+        if user:
+            user = user.split(':')[0]+'@'
+        prefix = urlserver_settings['http_url_prefix']
+        weechat.prnt('', 'URL server serving requests at http://%s%s:%s/%s' % (user, host, port, prefix))
     else:
         weechat.prnt('', 'URL server not running')
 
@@ -731,10 +762,6 @@ def urlserver_print_cb(data, buffer, time, tags, displayed, highlight, prefix, m
     # shorten URL(s) in message
     for url in urlserver['regex'].findall(message):
         if len(url) >= min_length:
-            # FIXME
-            #if urlserver_settings['msg_ignore_dup_urls'] == 'on':
-            #    if [key for key, value in urlserver['urls'].items() if value[3] == url]:
-            #        continue
             number = urlserver['urls'].insert(time, nick, buffer_name, url, message, prefix)
             if urlserver_settings['display_urls'] == 'on':
                 weechat.prnt_date_tags(buffer, 0, 'no_log,notify_none', '%s%s' % (weechat.color(urlserver_settings['color']), urlserver_short_url(number)))
