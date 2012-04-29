@@ -373,7 +373,7 @@ def urlserver_server_reply_list(conn, sort='-time', search='', page=1, amount=0)
         content.append('<li class="url">')
         content.append('<h1>%s <span>%s</span>   <span class="small">%s</span></h1>%s %s' %(nick, buffer_name, time, message, obj))
         content.append('</li>')
-    content.append('<li><a href="?page=%d" rel="next" accesskey="n">Next page</a></li>' %(page+1))
+    content.append('<li><a id="nextpage" href="?page=%d" rel="next" accesskey="n">Next page</a></li>' %(page+1))
     content  = '\n'.join(content) + '\n</ul>'
     if len(urlserver_settings['http_css_url']) > 0:
         css = '<link rel="stylesheet" type="text/css" href="%s" />' % urlserver_settings['http_css_url']
@@ -387,10 +387,20 @@ def urlserver_server_reply_list(conn, sort='-time', search='', page=1, amount=0)
         <link rel="next" href="?page=%s">
         <script type="text/javascript">
             var nr = 2;
-            var scroll = function(evt) {
-                if (evt.keyCode == 32 || evt.keyCode == 34) {
-                   evt.preventDefault();
-                   document.querySelector('li:nth-child('+nr+++')').scrollIntoView(true);
+            var scroll = function(event) {
+                if (event.keyCode == 32 || event.keyCode == 34  || event.charCode == 32 || event.charCode == 34) {
+                   e = document.querySelector('li:nth-child('+nr+++')')
+                   if (e) {
+                        e.scrollIntoView(true);
+                        Array.prototype.forEach.call(document.querySelectorAll('li'), function(li) {
+                            li.classList.add('faded');
+                        });
+                        e.classList.remove('faded')
+                   }else{
+                        window.location = document.querySelector('#nextpage').href;
+                    }
+                   event.preventDefault();
+                   return false;
                 }
             }
         </script>
@@ -416,7 +426,7 @@ def urlserver_server_reply_list(conn, sort='-time', search='', page=1, amount=0)
             color: #999;
             font-size: 13px;
           }
-        input {
+          input {
             width: 120px;
             padding: 4px 9px;
             margin: 0px 2px 0 0;
@@ -426,14 +436,17 @@ def urlserver_server_reply_list(conn, sort='-time', search='', page=1, amount=0)
             -o-border-radius: 15px;
             border-radius: 15px;
             outline: none;
-        }
-        .sortable {
+          }
+          .sortable {
             float: right;
             padding: 1em;
-        }
+          }
           .small {
             font-size: 9px;
-        }
+          }
+          .faded {
+            opacity: 0.3;
+          }
           .bar {
               background-color: #F4F4F4;
               border-radius: 5px 5px 0 0;
@@ -452,14 +465,14 @@ def urlserver_server_reply_list(conn, sort='-time', search='', page=1, amount=0)
           li { list-style: none;
                background: white;
                padding: 1em;
-           }
-           li:nth-child(even) {background: #f9f9f9}
-           div.obj { margin-top: 1em; }
+          }
+          li:nth-child(even) {background: #f9f9f9}
+          div.obj { margin-top: 1em; }
         -->
         </style>
         %s
         </head>
-        <body onkeypress="scroll(evt)">
+        <body onkeypress="scroll(event)">
             %s
         </body>
         </html>''' % (urlserver_settings['http_title'], page+1, css, content)
