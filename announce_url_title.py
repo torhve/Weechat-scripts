@@ -39,6 +39,13 @@
 # 
 #
 # History:
+# 2011-09-04, Deltafire
+#   version 15: fix remote execution exploit due to unescaped ' character in urls;
+#               small bug fix for version 14 changes
+# 2011-08-23, Deltafire
+#   version 14: ignore filtered lines
+# 2011-03-11, Sebastien Helleu <flashcode@flashtux.org>
+#   version 13: get python 2.x binary for hook_process (fix problem when python 3.x is default python version)
 # 2010-12-10, xt
 #   version 12: add better ignores (code based on m4v inotify.py)
 # 2010-11-02, xt
@@ -74,8 +81,8 @@ from fnmatch import fnmatch
 
 SCRIPT_NAME    = "announce_url_title"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "12"
-SCRIPT_LICENSE = "GPL"
+SCRIPT_VERSION = "15"
+SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Announce URL titles to channel or locally"
 
 settings = {
@@ -95,7 +102,7 @@ settings = {
 
 
 octet = r'(?:2(?:[0-4]\d|5[0-5])|1\d\d|\d{1,2})'
-ipAddr = r'%s(?:\.%s){3}' % (octet, octet)
+ipAddr = r'%s(?:\,.%s){3}' % (octet, octet)
 # Base domain regex off RFC 1034 and 1738
 label = r'[0-9a-z][-0-9a-z]*[0-9a-z]?'
 domain = r'%s(?:\.%s)*\.[a-z][-0-9a-z]*[a-z]?' % (label, label)
@@ -119,8 +126,8 @@ def unescape(s):
 def url_print_cb(data, buffer, time, tags, displayed, highlight, prefix, message):
     global buffer_name, urls, ignore_buffers
 
-    # Do not trigger on notices
-    if prefix == '--':
+    # Do not trigger on filtered lines and notices
+    if displayed == '0' or prefix == '--':
         return w.WEECHAT_RC_OK
 
     msg_buffer_name = w.buffer_get_string(buffer, "name")
@@ -154,6 +161,7 @@ def url_print_cb(data, buffer, time, tags, displayed, highlight, prefix, message
     ignorelist = w.config_get_plugin('url_ignore').split(',')
     for url in urlRe.findall(message):
 
+        url = url.replace("'", "%27") # Save a whole load of hassle trying to escape the ' char
         ignore = False
         for ignore_part in ignorelist:
             if ignore_part.strip():
@@ -183,7 +191,8 @@ def url_process_launcher():
             url_d['launched'] = now()
 
             # Read 8192
-            cmd = "python -c \"import urllib2; opener = urllib2.build_opener();"
+            python2_bin = w.info_get("python2_bin", "") or "python"
+            cmd = python2_bin + " -c \"import urllib2; opener = urllib2.build_opener();"
             cmd += "opener.addheaders = [('User-agent','%s')];" % user_agent
             cmd += "print opener.open('%s').read(8192)\"" % url
 
