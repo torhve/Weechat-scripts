@@ -3,6 +3,7 @@
 # Copyright (C) 2011-2012 Sebastien Helleu <flashcode@flashtux.org>
 # Copyright (C) 2011-2012 xt <xt@bash.no>
 # Copyright (C) 2012 Filip H.F. "FiXato" Slagter <fixato+weechat+urlserver@gmail.com>
+# Copyright (C) 2012 Simen "si-m1" Graaten <simeng+weechat@gmail.com>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -44,8 +45,10 @@
 #
 # History:
 #
+# 2012-04-30, Simen Graaten <simeng+weechat@gmail.com>:
+#   version 0.11: Add spotify url embed
 # 2012-04-29, Tor Hveem <xt@bash.no>:
-#   version 10: improve html, save to SQL, pagination
+#   version 0.10: improve html, save to SQL, pagination
 # 2012-04-18, Filip H.F. "FiXato" Slagter <fixato+weechat+urlserver@gmail.com>:
 #     version 0.9: add options "http_autostart", "http_port_display"
 #                  "url_min_length" can now be set to -1 to auto-detect minimal url length
@@ -402,6 +405,8 @@ def urlserver_server_reply_list(conn, sort='-time', search='', page=1, amount=0)
                             width="%(width)s" height="%(height)s" frameborder="0" webkitAllowFullScreen mozallowfullscreen allowFullScreen></iframe>
                         </div>
                     ''' %{'vid': vid, 'width': width, 'height': height}
+        elif len(url) > 8 and ('spotify:' in url[0:8] or '//open.spotify.com/' in url):
+            obj = '<div class="obj spotify"><iframe src="https://embed.spotify.com/?uri=%(url)s" width="%(width)s" height="%(height)s" frameborder="0" allowtransparency="true"></iframe></div>' % { 'url': url, 'width': 376, 'height': 80 }
 
         content.append('<li class="url">')
         content.append('<h1>%s <span>%s</span>   <span class="small">%s</span></h1>%s %s' %(nick, buffer_name, time, message, obj))
