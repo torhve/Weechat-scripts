@@ -318,6 +318,16 @@ def urlserver_server_favicon():
         'mZ7ejSv5v50OQMnujH8BbzDFpcdRAIIAAAAASUVORK5CYII='
     return base64_decode(s)
 
+def urlserver_video_size():
+    try:
+        size = urlserver_settings['http_embed_youtube_size'].split('*')
+        width = int(size[0])
+        height = int(size[1])
+    except:
+        width = 480
+        height = 350
+    return width, height
+
 def urlserver_server_reply_list(conn, sort='-time', search='', page=1, amount=0):
     """Send list of URLs as HTML page to client."""
     global urlserver, urlserver_settings
@@ -379,15 +389,20 @@ def urlserver_server_reply_list(conn, sort='-time', search='', page=1, amount=0)
             m = re.search('v=([\w\d]+)', url)
             if m:
                 yid = m.group(1)
-                try:
-                    size = urlserver_settings['http_embed_youtube_size'].split('*')
-                    width = int(size[0])
-                    height = int(size[1])
-                except:
-                    width = 480
-                    height = 350
+                width, height = urlserver_video_size()
                 obj = '<div class="obj youtube"><iframe id="%s" type="text/html" width="%d" height="%d" ' \
                     'src="http://www.youtube.com/embed/%s?enablejsapi=1"></iframe></div>' % (yid, width, height, yid)
+        elif 'vimeo.com/' in url:
+            m = re.search('/(\d+)', url)
+            if m:
+                vid = m.group(1)
+                width, height = urlserver_video_size()
+                obj = '''<div class="obj youtube">
+                            <iframe src="http://player.vimeo.com/video/%(vid)s?title=0&amp;byline=0&amp;portrait=0"
+                            width="%(width)s" height="%(height)s" frameborder="0" webkitAllowFullScreen mozallowfullscreen allowFullScreen></iframe>
+                        </div>
+                    ''' %{'vid': vid, 'width': width, 'height': height}
+
         content.append('<li class="url">')
         content.append('<h1>%s <span>%s</span>   <span class="small">%s</span></h1>%s %s' %(nick, buffer_name, time, message, obj))
         content.append('</li>')
@@ -491,6 +506,14 @@ def urlserver_server_reply_list(conn, sort='-time', search='', page=1, amount=0)
           }
           li:nth-child(even) {background: #f9f9f9}
           div.obj { margin-top: 1em; }
+          .url a {
+              word-wrap: break-word;
+              /*if word-wrap isn't understood, then just have it overflow with a scrollbar*/
+              display: inline-block; max-width: 100%%; overflow-x: auto; overflow-y:hidden; line-height: 1.4em;
+          }
+          /* Make embedded images fit better in the browser; unless when hovered over */
+          .url img {max-width: 100%%; max-height: 50%%;}
+          .url img:hover {max-width: none; max-height: none;}
         -->
         </style>
         %s
