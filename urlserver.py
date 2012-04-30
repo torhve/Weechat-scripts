@@ -155,7 +155,7 @@ class urldb(object):
             %s
             ORDER BY %s desc
             LIMIT %s OFFSET %s''' %(search, distinct, order_by, amount, offset)
-        weechat.prnt('', 'urlserver: SQL: %s' % sql)
+        #weechat.prnt('', 'urlserver: SQL: %s' % sql)
         execute = self.cursor.execute(sql)
         return self.cursor.fetchall()
 
@@ -701,7 +701,7 @@ def urlserver_open_buffer():
         weechat.buffer_clear(urlserver['buffer'])
         urls = urlserver['urls'].items()
         for url in urls:
-            key = url[0]
+            key = url[1]
             urlserver_display_url_detail(key)
         weechat.buffer_set(urlserver['buffer'], 'display', '1')
 
