@@ -350,12 +350,13 @@ def urlserver_server_reply_list(conn, sort='-time', search='', page=1, amount=0)
     content = ''
     if urlserver_settings['http_url_prefix']:
         prefix = '%s/' % urlserver_settings['http_url_prefix']
-    for column, defaultsort in (('time', '-'), ('nick', ''), ('buffer', '')):
-        if sort[1:] == column:
-            content += '<div class="sortable sorted_by %s_header"><a href="/%s?sort=%s%s">%s</a> %s</div>' % (column, prefix, sortkey[sort[0]][0], column, column.capitalize(), sortkey[sort[0]][1])
-        else:
-            content += '<div class="sortable %s_header"><a class="sort_link" href="/%s?sort=%s%s">%s</a></div>' % (column, prefix, defaultsort, column, column.capitalize())
-
+    # FIXME sorting not working
+    # for column, defaultsort in (('time', '-'), ('nick', ''), ('buffer', '')):
+    #    if sort[1:] == column:
+    #        content += '<div class="sortable sorted_by %s_header"><a href="/%s?sort=%s%s">%s</a> %s</div>' % (column, prefix, sortkey[sort[0]][0], column, column.capitalize(), sortkey[sort[0]][1])
+    #    else:
+    #        content += '<div class="sortable %s_header"><a class="sort_link" href="/%s?sort=%s%s">%s</a></div>' % (column, prefix, defaultsort, column, column.capitalize())
+#
     content += '<div class="sortable"><form method="get"><input type="text" name="search" value="%s" placeholder="Search"></input></form></div>' %search
 
     amount = int(amount)
@@ -436,9 +437,9 @@ def urlserver_server_reply_list(conn, sort='-time', search='', page=1, amount=0)
                    if (e) {
                         e.scrollIntoView(true);
                         Array.prototype.forEach.call(document.querySelectorAll('li'), function(li) {
-                            li.classList.add('faded');
+                            li.classList.remove('highlight');
                         });
-                        e.classList.remove('faded')
+                        e.classList.add('highlight')
                    }else{
                         window.location = document.querySelector('#nextpage').href;
                     }
@@ -459,6 +460,9 @@ def urlserver_server_reply_list(conn, sort='-time', search='', page=1, amount=0)
           a {
             color: #00a5f0;
             text-decoration: none;
+          }
+          .highlight {
+            background-color: rgba(0, 165, 240, 0.2) !important;
           }
           h1 {
               color: #222;
@@ -486,9 +490,6 @@ def urlserver_server_reply_list(conn, sort='-time', search='', page=1, amount=0)
           }
           .small {
             font-size: 9px;
-          }
-          .faded {
-            opacity: 0.3;
           }
           .bar {
               background-color: #F4F4F4;
