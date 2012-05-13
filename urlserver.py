@@ -331,6 +331,12 @@ def urlserver_video_size():
         height = 350
     return width, height
 
+def urlserver_youtube_div(yid):
+    width, height = urlserver_video_size()
+    return '<div class="obj youtube"><iframe id="%s" type="text/html" width="%d" height="%d" ' \
+        'src="http://www.youtube.com/embed/%s?enablejsapi=1"></iframe></div>' % (yid, width, height, yid)
+
+
 def urlserver_server_reply_list(conn, sort='-time', search='', page=1, amount=0):
     """Send list of URLs as HTML page to client."""
     global urlserver, urlserver_settings
@@ -393,9 +399,12 @@ def urlserver_server_reply_list(conn, sort='-time', search='', page=1, amount=0)
             m = re.search('v=([\w\d]+)', url)
             if m:
                 yid = m.group(1)
-                width, height = urlserver_video_size()
-                obj = '<div class="obj youtube"><iframe id="%s" type="text/html" width="%d" height="%d" ' \
-                    'src="http://www.youtube.com/embed/%s?enablejsapi=1"></iframe></div>' % (yid, width, height, yid)
+                obj = urlserver_youtube_div(yid)
+        elif urlserver_settings['http_embed_youtube'] == 'on' and 'youtu.be/' in url:
+            m = re.search('youtu.be/([\w\d]+)', url)
+            if m:
+                yid = m.group(1)
+                obj = urlserver_youtube_div(yid)
         elif 'vimeo.com/' in url:
             m = re.search('/(\d+)', url)
             if m:
