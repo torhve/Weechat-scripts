@@ -577,7 +577,7 @@ def urlserver_server_fd_cb(data, fd):
                     prefixok = False
             if prefixok: # prefix ok, go on with url
                 kwargs = dict(urlparse.parse_qsl(url.query))
-                if len(path) > 1:
+                if len(path) >= 1:
                     # short url, read base62 key and redirect to page
                     number = -1
                     try:
