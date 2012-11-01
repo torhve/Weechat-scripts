@@ -64,15 +64,30 @@ function string:split(sSeparator, nMax, bRegexp)
 end
 
 
+
 function tbot_list(data, buffer, time, tags, displayed, highlight, prefix, message)
-    local patterns = w.config_string(tbot_config.hdtrue)
-    -- Prettier
-    patterns = patterns:split(',')
-    table.sort(patterns, function (a, b)
-      return string.lower(a) < string.lower(b)
-    end)
-    patterns = table.concat(patterns, ', ')
-    w.command(buffer, "HD: " .. patterns)
+    -- Bot command list, return the hd and sd list
+    local function prettify_patterns(option)
+        local patterns = w.config_string(option)
+        -- Prettier
+        patterns = patterns:split(',')
+        table.sort(patterns, function (a, b)
+          return string.lower(a) < string.lower(b)
+        end)
+        patterns = table.concat(patterns, ', ')
+        return patterns
+    end
+    w.command(buffer, "HD: " .. prettify_patterns(tbot_config.hdtrue))
+    w.command(buffer, "SD: " .. prettify_patterns(tbot_config.sdtrue))
+    return w.WEECHAT_RC_OK
+end
+
+function tbot_count(data, buffer, time, tags, displayed, highlight, prefix, message)
+    -- Bot command to count
+    local hdpatterns = w.config_string(tbot_config.hdtrue):split(',')
+    local sdpatterns = w.config_string(tbot_config.sdtrue):split(',')
+    w.command(buffer, "HD: count: " .. #hdpatterns)
+    w.command(buffer, "SD: count: " .. #sdpatterns)
     return w.WEECHAT_RC_OK
 end
 
@@ -85,7 +100,8 @@ function tbot_add(data, buffer, time, tags, displayed, highlight, prefix, messag
     -- Save the new config option
     w.config_option_set(tbot_config.hdtrue, str, 1)
     -- Display the new string
-    return tbot_list(data, buffer, time, tags, displayed, highligh, prefix, message)
+    w.command(buffer, "Added " .. new)
+    return w.WEECHAT_RC_OK 
 end
 
 function tbot_remove(data, buffer, time, tags, displayed, highlight, prefix, message)
@@ -227,13 +243,14 @@ function tbot_init()
     )
     tbot_config_init()
     tbot_config_read()
-   local enabled = w.config_boolean(tbot_config.enable)
-   if enabled == 1 then
+    local enabled = w.config_boolean(tbot_config.enable)
+    if enabled == 1 then
         -- Register bot commands
         w.hook_print("", "", "@tbot list",    1, "tbot_list", "")
         w.hook_print("", "", "@tbot add",     1, "tbot_add", "")
-        w.hook_print("", "", "@tbot remove",  2, "tbot_remove", "")
-   end
+        w.hook_print("", "", "@tbot remove",  1, "tbot_remove", "")
+        w.hook_print("", "", "@tbot count",   1, "tbot_count", "")
+    end
 end
 
 -- Initialize the script
