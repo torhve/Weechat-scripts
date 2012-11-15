@@ -78,6 +78,7 @@ import re
 import htmllib
 from time import time as now
 from fnmatch import fnmatch
+from urllib import quote
 
 SCRIPT_NAME    = "announce_url_title"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
@@ -161,7 +162,7 @@ def url_print_cb(data, buffer, time, tags, displayed, highlight, prefix, message
     ignorelist = w.config_get_plugin('url_ignore').split(',')
     for url in urlRe.findall(message):
 
-        url = url.replace("'", "%27") # Save a whole load of hassle trying to escape the ' char
+        url = quote(url, ":/") # Escape URL
         ignore = False
         for ignore_part in ignorelist:
             if ignore_part.strip():
