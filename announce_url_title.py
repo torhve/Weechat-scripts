@@ -39,6 +39,8 @@
 # 
 #
 # History:
+# 2012-11-15, xt
+#   version 16: improve escaping
 # 2011-09-04, Deltafire
 #   version 15: fix remote execution exploit due to unescaped ' character in urls;
 #               small bug fix for version 14 changes
@@ -82,7 +84,7 @@ from urllib import quote
 
 SCRIPT_NAME    = "announce_url_title"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "15"
+SCRIPT_VERSION = "16"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "Announce URL titles to channel or locally"
 
