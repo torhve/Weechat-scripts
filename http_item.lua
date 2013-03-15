@@ -1,4 +1,4 @@
---  Simple HTTP bar item, using lua patterns to get content
+-- HTTP bar item, using lua patterns to get content
 --
 -- Copyright 2013 Tor Hveem <xt@bash.no>
 --
