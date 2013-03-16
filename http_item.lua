@@ -33,8 +33,8 @@ BAR_ITEM_NAME  = SCRIPT_NAME
 
 -- Settings
 settings = {
-    url               = 'http://git.savannah.gnu.org/cgit/weechat.git/refs/', 
-    pattern           = '/tag/%?id=v(%d+%.%d+%.%d+)',
+    url               = 'http://weechat.org/info/stable/', 
+    pattern           = '(%d+%.%d+%.%d+)',
     message_prefix    = 'Latest WeeChat: ',
     message_postfix   = '',
     message_color     = 'default',
