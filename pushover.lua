@@ -32,16 +32,16 @@ private messages.
 
 --]]
 
-SCRIPT_NAME		= "pushover"
-SCRIPT_AUTHOR	= "Tor Hveem <tor@bash.no>"
-SCRIPT_VERSION	= "1"
-SCRIPT_LICENSE	= "GPL3"
-SCRIPT_DESC		= "Send push notifications from weechat"
+SCRIPT_NAME     = "pushover"
+SCRIPT_AUTHOR   = "Tor Hveem <tor@bash.no>"
+SCRIPT_VERSION  = "1"
+SCRIPT_LICENSE  = "GPL3"
+SCRIPT_DESC     = "Send push notifications from weechat"
 
 local w = weechat
 
 p_config = {
-	token   = '',
+    token   = '',
     user    = '',
 }
 
@@ -49,7 +49,7 @@ p_hook_process = nil
 
 -- printf function
 function printf(buffer, fmt, ...)
-	w.print(buffer, string.format(fmt, unpack(arg)))
+    w.print(buffer, string.format(fmt, unpack(arg)))
 end
 
 function pushover_unload()
@@ -58,39 +58,39 @@ end
 
 function p_process_cb(data, command, rc, stdout, stderr)
     if tonumber(rc) >= 0 then
-		p_hook_process = nil
-	end
+        p_hook_process = nil
+    end
 end
 
 function get_nick(s)
-	local prefix = w.config_string(w.config_get('irc.look.nick_prefix'))
-	local suffix = w.config_string(w.config_get('irc.look.nick_suffix'))
-	s = s:gsub('^'..prefix, '')
-	s = s:gsub(suffix..'$', '')
-	s = s:gsub('^[~%+@!]*', '')
-	return s
+    local prefix = w.config_string(w.config_get('irc.look.nick_prefix'))
+    local suffix = w.config_string(w.config_get('irc.look.nick_suffix'))
+    s = s:gsub('^'..prefix, '')
+    s = s:gsub(suffix..'$', '')
+    s = s:gsub('^[~%+@!]*', '')
+    return s
 end
 
 function pushover_check(data, buffer, time, tags, display, hilight, prefix, msg)
     if w.buffer_get_string(buffer, 'localvar_away') == '' then return w.WEECHAT_RC_OK end
 
-	local token = w.config_get_plugin('token')
-	local user = w.config_get_plugin('user')
+    local token = w.config_get_plugin('token')
+    local user = w.config_get_plugin('user')
 
-	if token == '' or user == '' then
-		return w.WEECHAT_RC_OK
-	end
+    if token == '' or user == '' then
+        return w.WEECHAT_RC_OK
+    end
 
     if (hilight == '1' or string.find(tags, 'notify_private')) and display == '1' then
         local channel = w.buffer_get_string(buffer, 'short_name')
-		local url = 'https://api.pushover.net/1/messages.json'
-		local nick = get_nick(prefix)
-		local message = '<'..nick..'>'.. ' ' .. msg
-		local options = {
-			postfields = 'token='..token..'&user='..user..'&title='..channel..'&message='..message
-		}
-		p_hook_process = w.hook_process_hashtable('url:'..url, options, 10 * 1000, 'p_process_cb', '')
-	end
+        local url = 'https://api.pushover.net/1/messages.json'
+        local nick = get_nick(prefix)
+        local message = '<'..nick..'>'.. ' ' .. msg
+        local options = {
+            postfields = 'token='..token..'&user='..user..'&title='..channel..'&message='..message
+        }
+        p_hook_process = w.hook_process_hashtable('url:'..url, options, 10 * 1000, 'p_process_cb', '')
+    end
 end
 
 
@@ -103,12 +103,12 @@ function p_init()
         SCRIPT_DESC,
         "pushover_unload", ""
     )
-	for opt, val in pairs(p_config) do
-		if w.config_is_set_plugin(opt) == 0 then
-			w.config_set_plugin(opt, val)
-		end
-	end
-	w.hook_print('', '', '', 1, 'pushover_check', '')
+    for opt, val in pairs(p_config) do
+        if w.config_is_set_plugin(opt) == 0 then
+            w.config_set_plugin(opt, val)
+        end
+    end
+    w.hook_print('', '', '', 1, 'pushover_check', '')
 end
 
 -- Initialize the script
