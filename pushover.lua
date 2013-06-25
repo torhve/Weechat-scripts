@@ -72,7 +72,7 @@ function get_nick(s)
 end
 
 function pushover_check(data, buffer, time, tags, display, hilight, prefix, msg)
-    if not w.buffer_get_string(buffer, 'localvar_away') then return w.WEECHAT_RC_OK end
+    if w.buffer_get_string(buffer, 'localvar_away') == '' then return w.WEECHAT_RC_OK end
 
 	local token = w.config_get_plugin('token')
 	local user = w.config_get_plugin('user')
