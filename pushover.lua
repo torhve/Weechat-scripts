@@ -26,9 +26,8 @@ Next you must configure the script:
 /set plugins.var.lua.pushover.user your user token here
 /set plugins.var.lua.pushover.token your application token here
 
-Then script should send messages if you are away and receive highlights or
+By default the script sends messages if you are away and receive highlights or
 private messages.
-
 
 --]]
 
@@ -40,9 +39,21 @@ SCRIPT_DESC     = "Send push notifications from weechat"
 
 local w = weechat
 
-p_config = {
+local p_config = {
+    token   = 'Your application token',
+    user    = 'Your user token',
+	ignore_nicks = 'Comma separated list of nicks to ignore',
+	ignore_buffers = 'Comma separated list of buffers to ignore',
+	ignore_messages = 'Comma separated list of message parts that will ignore the message',
+	only_when_away = 'Only send messages when away. String with values either on or off',
+}
+local p_config_defaults = {
     token   = '',
     user    = '',
+	ignore_nicks = '',
+	ignore_buffers = '',
+	ignore_messages = '',
+	only_when_away = 'on',
 }
 
 p_hook_process = nil
@@ -52,14 +63,11 @@ function printf(buffer, fmt, ...)
     w.print(buffer, string.format(fmt, unpack(arg)))
 end
 
-function pushover_unload()
-    return w.WEECHAT_RC_OK
-end
-
 function p_process_cb(data, command, rc, stdout, stderr)
     if tonumber(rc) >= 0 then
         p_hook_process = nil
     end
+	return w.WEECHAT_RC_OK
 end
 
 function get_nick(s)
@@ -72,7 +80,10 @@ function get_nick(s)
 end
 
 function pushover_check(data, buffer, time, tags, display, hilight, prefix, msg)
-    if w.buffer_get_string(buffer, 'localvar_away') == '' then return w.WEECHAT_RC_OK end
+	if w.config_get_plugin('only_when_away') == 'on' then
+		-- Check if buffer has away message set, if not return
+		if w.buffer_get_string(buffer, 'localvar_away') == '' then return w.WEECHAT_RC_OK end
+	end
 
     local token = w.config_get_plugin('token')
     local user = w.config_get_plugin('user')
@@ -81,34 +92,53 @@ function pushover_check(data, buffer, time, tags, display, hilight, prefix, msg)
         return w.WEECHAT_RC_OK
     end
 
+	-- We need highligt or private message, and not ignored by anything
     if (hilight == '1' or string.find(tags, 'notify_private')) and display == '1' then
         local channel = w.buffer_get_string(buffer, 'short_name')
-        local url = 'https://api.pushover.net/1/messages.json'
         local nick = get_nick(prefix)
+
+		-- Check for nick ignores
+		for ignore in w.config_get_plugin('ignore_nicks'):gmatch('[^,]+') do
+			if string.find(nick, ignore) then return w.WEECHAT_RC_OK end
+		end
+		-- Check for buffer ignores
+		for ignore in w.config_get_plugin('ignore_buffers'):gmatch('[^,]+') do
+			if string.find(channel, ignore) then return w.WEECHAT_RC_OK end
+		end
+		-- Check for msg ignores
+		for ignore in w.config_get_plugin('ignore_messages'):gmatch('[^,]+') do
+			if string.find(msg, ignore) then return w.WEECHAT_RC_OK end
+		end
+
         local message = '<'..nick..'>'.. ' ' .. msg
         local options = {
             postfields = 'token='..token..'&user='..user..'&title='..channel..'&message='..message
         }
+        local url = 'https://api.pushover.net/1/messages.json'
         p_hook_process = w.hook_process_hashtable('url:'..url, options, 10 * 1000, 'p_process_cb', '')
     end
+	return w.WEECHAT_RC_OK
 end
 
 
 function p_init()
-    w.register(
+    if w.register(
         SCRIPT_NAME,
         SCRIPT_AUTHOR,
         SCRIPT_VERSION,
         SCRIPT_LICENSE,
         SCRIPT_DESC,
-        "pushover_unload", ""
-    )
-    for opt, val in pairs(p_config) do
-        if w.config_is_set_plugin(opt) == 0 then
-            w.config_set_plugin(opt, val)
-        end
-    end
-    w.hook_print('', '', '', 1, 'pushover_check', '')
+        '', 
+		'') then
+		for opt, val in pairs(p_config) do
+			if w.config_is_set_plugin(opt) == 0 then
+				w.config_set_plugin(opt, p_config_defaults[opt])
+			end
+			w.config_set_desc_plugin(opt, val)
+		end
+		-- Hook on every message printed
+		w.hook_print('', '', '', 1, 'pushover_check', '')
+	end
 end
 
 -- Initialize the script
