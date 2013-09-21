@@ -81,7 +81,7 @@ end
 
 function is_url_in_buffer(buffer, url)
     lines = weechat.hdata_pointer(weechat.hdata_get('buffer'), buffer, 'own_lines')
-	line = weechat.hdata_pointer(weechat.hdata_get('lines'), lines, 'first_line')
+    line = weechat.hdata_pointer(weechat.hdata_get('lines'), lines, 'first_line')
 	hdata_line = weechat.hdata_get('line')
 	hdata_line_data = weechat.hdata_get('line_data')
 	while #line > 0 do
