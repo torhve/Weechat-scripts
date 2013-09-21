@@ -88,7 +88,7 @@ function is_url_in_buffer(buffer, url)
         data = weechat.hdata_pointer(hdata_line, line, 'data')
         message = weechat.hdata_string(hdata_line_data, data, 'message')
         if string.find(message, url) then
-            re://raw.github.com/torhve/Weechat-scripts/b6b3bb7ff9c5bbab331938d024f0d2beaf2691ca/oldswarner.luaturn true
+            return true
         end
         line = weechat.hdata_move(hdata_line, line, 1)
     end
