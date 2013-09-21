@@ -28,11 +28,17 @@ Usage:
 	If you already have customized this setting, you will have to edit your own setting and add input_olds where you want it to be displayed.
 
 
+
+	Changelog:
+		version 2, 2013-09-21, xt
+			* Use hdata instead of infolines to improve performance
+		version 1, 2013-09-15, xt
+			* initial version
 --]]
 
 SCRIPT_NAME     = "oldswarner"
 SCRIPT_AUTHOR   = "xt <xt@bash.no>"
-SCRIPT_VERSION  = "1"
+SCRIPT_VERSION  = "2"
 SCRIPT_LICENSE  = "GPL3"
 SCRIPT_DESC     = "Warn user if about to paste URL already existing in buffer"
 
@@ -74,17 +80,18 @@ function findURLs(message)
 end
 
 function is_url_in_buffer(buffer, url)
-	infolist = w.infolist_get('buffer_lines', buffer, '')
-	while w.infolist_next(infolist) == 1 do
-		line = w.infolist_string(infolist, 'message')
-		for _,foundurl in pairs(findURLs(line)) do
-			if foundurl == url then
-				w.infolist_free(infolist)
-				return true
-			end
+    lines = weechat.hdata_pointer(weechat.hdata_get('buffer'), buffer, 'own_lines')
+	line = weechat.hdata_pointer(weechat.hdata_get('lines'), lines, 'first_line')
+	hdata_line = weechat.hdata_get('line')
+	hdata_line_data = weechat.hdata_get('line_data')
+	while #line > 0 do
+		data = weechat.hdata_pointer(hdata_line, line, 'data')
+		message = weechat.hdata_string(hdata_line_data, data, 'message')
+		if string.find(message, url) then
+			return true
 		end
+		line = weechat.hdata_move(hdata_line, line, 1)
 	end
-	w.infolist_free(infolist)
 	return false
 end
 
