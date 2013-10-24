@@ -52,16 +52,6 @@ function fill_lines(buffer, count)
 end
 
 function line_print_cb(data, buffer, time, tags, display, hilight, prefix, msg)
-    -- simulate checking some stuff
-    local matches = 0 
-    if display == '1' then
-        if string.find(msg, 'line') then
-            matches = matches + 1
-        end
-    end
-
-    w.print('', string.format('Found %s matching lines', matches))
-
     return w.WEECHAT_RC_OK
 end
 
@@ -116,16 +106,17 @@ if w.register(
 
     local matches = 0
 
+    -- Hook on every message printed in benchmark buffer
+    -- this hook does not do anything for now
+    w.hook_print(buffer, '', '', 1, 'line_print_cb', '')
+
     -- default history is 4096 lines so only add that in one go
     local count = 4096
-    -- run the test 1024 times
+    -- run the test 100 times, it takes roughly 30 seconds on the script author's slow CPU
     for i=0,100 do
         fill_lines(buffer, count)
         matches = matches + #find_all_lines_matching(buffer, 'line')
     end
-
-    -- Hook on every message printed in benchmark buffer
-    w.hook_print(buffer, '', '', 1, 'line_print_cb', '')
     
     w.print('', string.format('Found %s lines matching.', matches))
 
