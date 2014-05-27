@@ -33,7 +33,7 @@ private messages.
 
 SCRIPT_NAME     = "pushover"
 SCRIPT_AUTHOR   = "Tor Hveem <tor@bash.no>"
-SCRIPT_VERSION  = "1"
+SCRIPT_VERSION  = "2"
 SCRIPT_LICENSE  = "GPL3"
 SCRIPT_DESC     = "Send push notifications from weechat"
 
@@ -93,7 +93,7 @@ function pushover_check(data, buffer, time, tags, display, hilight, prefix, msg)
     end
 
 	-- We need highligt or private message, and not ignored by anything
-    if (hilight == '1' or string.find(tags, 'notify_private')) and display == '1' then
+    if (hilight == 1 or string.find(tags, 'notify_private')) and display == 1 then
         local channel = w.buffer_get_string(buffer, 'short_name')
         local nick = get_nick(prefix)
 
