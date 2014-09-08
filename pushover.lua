@@ -42,20 +42,20 @@ local w = weechat
 local p_config = {
     token   = 'Your application token',
     user    = 'Your user token',
-	ignore_nicks = 'Comma separated list of nicks to ignore',
-	ignore_buffers = 'Comma separated list of buffers to ignore',
-	ignore_messages = 'Comma separated list of message parts that will ignore the message',
-	only_when_away = 'Only send messages when away. String with values either on or off',
-	idle_timeout = 'Start sending messages after N seconds of inactivity',
+    ignore_nicks = 'Comma separated list of nicks to ignore',
+    ignore_buffers = 'Comma separated list of buffers to ignore',
+    ignore_messages = 'Comma separated list of message parts that will ignore the message',
+    only_when_away = 'Only send messages when away. String with values either on or off',
+    idle_timeout = 'Start sending messages after N seconds of inactivity',
 }
 local p_config_defaults = {
     token   = '',
     user    = '',
-	ignore_nicks = '',
-	ignore_buffers = '',
-	ignore_messages = '',
-	only_when_away = 'on',
-	idle_timeout = 0,
+    ignore_nicks = '',
+    ignore_buffers = '',
+    ignore_messages = '',
+    only_when_away = 'on',
+    idle_timeout = 0,
 }
 
 -- printf function
@@ -64,7 +64,7 @@ function printf(buffer, fmt, ...)
 end
 
 function p_process_cb(data, command, rc, stdout, stderr)
-	return w.WEECHAT_RC_OK
+    return w.WEECHAT_RC_OK
 end
 
 function get_nick(s)
@@ -89,11 +89,11 @@ function pushover_send_queued_messages(data, remaining_calls)
    end      
    if timeout > 0 then
       if timeout < inactivity then
-	 local val = table.remove(outstanding_messages)
-	 while val do
-	    w.hook_process_hashtable(value.url, value.options, 10 * 1000, 'p_process_cb', '')
-	    val = table.remove(outstanding_messages)
-	 end
+     local val = table.remove(outstanding_messages)
+     while val do
+        w.hook_process_hashtable(value.url, value.options, 10 * 1000, 'p_process_cb', '')
+        val = table.remove(outstanding_messages)
+     end
       end
    end
    last_inactivity = inactivity
@@ -101,10 +101,10 @@ function pushover_send_queued_messages(data, remaining_calls)
 end
 
 function pushover_check(data, buffer, time, tags, display, hilight, prefix, msg)
-	if w.config_get_plugin('only_when_away') == 'on' then
-		-- Check if buffer has away message set, if not return
-		if w.buffer_get_string(buffer, 'localvar_away') == '' then return w.WEECHAT_RC_OK end
-	end
+    if w.config_get_plugin('only_when_away') == 'on' then
+        -- Check if buffer has away message set, if not return
+        if w.buffer_get_string(buffer, 'localvar_away') == '' then return w.WEECHAT_RC_OK end
+    end
 
     local token = w.config_get_plugin('token')
     local user = w.config_get_plugin('user')
@@ -113,23 +113,23 @@ function pushover_check(data, buffer, time, tags, display, hilight, prefix, msg)
         return w.WEECHAT_RC_OK
     end
 
-	-- We need highligt or private message, and not ignored by anything
+    -- We need highligt or private message, and not ignored by anything
     if (hilight == 1 or string.find(tags, 'notify_private')) and display == 1 then
         local channel = w.buffer_get_string(buffer, 'short_name')
         local nick = get_nick(prefix)
 
-		-- Check for nick ignores
-		for ignore in w.config_get_plugin('ignore_nicks'):gmatch('[^,]+') do
-			if string.find(nick, ignore) then return w.WEECHAT_RC_OK end
-		end
-		-- Check for buffer ignores
-		for ignore in w.config_get_plugin('ignore_buffers'):gmatch('[^,]+') do
-			if string.find(channel, ignore) then return w.WEECHAT_RC_OK end
-		end
-		-- Check for msg ignores
-		for ignore in w.config_get_plugin('ignore_messages'):gmatch('[^,]+') do
-			if string.find(msg, ignore) then return w.WEECHAT_RC_OK end
-		end
+        -- Check for nick ignores
+        for ignore in w.config_get_plugin('ignore_nicks'):gmatch('[^,]+') do
+            if string.find(nick, ignore) then return w.WEECHAT_RC_OK end
+        end
+        -- Check for buffer ignores
+        for ignore in w.config_get_plugin('ignore_buffers'):gmatch('[^,]+') do
+            if string.find(channel, ignore) then return w.WEECHAT_RC_OK end
+        end
+        -- Check for msg ignores
+        for ignore in w.config_get_plugin('ignore_messages'):gmatch('[^,]+') do
+            if string.find(msg, ignore) then return w.WEECHAT_RC_OK end
+        end
 
         local message = '<'..nick..'>'.. ' ' .. msg
         local options = {
@@ -137,18 +137,18 @@ function pushover_check(data, buffer, time, tags, display, hilight, prefix, msg)
         }
         local url = 'https://api.pushover.net/1/messages.json'
 
-	local timeout = tonumber(w.config_get_plugin('idle_timeout'))
-	if timeout > 0 then
-	   if timeout > tonumber(w.info_get("inactivity", "")) then
-	      table.insert(outstanding_messages, { ["url"] = 'url:'..url, ["options"] = options })
-	      return w.WEECHAT_RC_OK
-	   end
-	end
-	w.print("", "would send")
+    local timeout = tonumber(w.config_get_plugin('idle_timeout'))
+    if timeout > 0 then
+       if timeout > tonumber(w.info_get("inactivity", "")) then
+          table.insert(outstanding_messages, { ["url"] = 'url:'..url, ["options"] = options })
+          return w.WEECHAT_RC_OK
+       end
+    end
+    w.print("", "would send")
    --    p_hook_process = w.hook_process_hashtable('url:'..url, options, 10 * 1000, 'p_process_cb', '')
 
     end
-	return w.WEECHAT_RC_OK
+    return w.WEECHAT_RC_OK
 end
 
 
@@ -160,17 +160,17 @@ function p_init()
         SCRIPT_LICENSE,
         SCRIPT_DESC,
         '', 
-		'') then
-		for opt, val in pairs(p_config) do
-			if w.config_is_set_plugin(opt) == 0 then
-				w.config_set_plugin(opt, p_config_defaults[opt])
-			end
-			w.config_set_desc_plugin(opt, val)
-		end
-		-- Hook on every message printed
-		w.hook_print('', '', '', 1, 'pushover_check', '')
-		w.hook_timer(1000*check_interval, 0, 0, 'pushover_send_queued_messages', '')
-	end
+        '') then
+        for opt, val in pairs(p_config) do
+            if w.config_is_set_plugin(opt) == 0 then
+                w.config_set_plugin(opt, p_config_defaults[opt])
+            end
+            w.config_set_desc_plugin(opt, val)
+        end
+        -- Hook on every message printed
+        w.hook_print('', '', '', 1, 'pushover_check', '')
+        w.hook_timer(1000*check_interval, 0, 0, 'pushover_send_queued_messages', '')
+    end
 end
 
 -- Initialize the script
