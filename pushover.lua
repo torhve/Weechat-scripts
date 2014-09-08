@@ -33,7 +33,7 @@ private messages.
 
 SCRIPT_NAME     = "pushover"
 SCRIPT_AUTHOR   = "Tor Hveem <tor@bash.no>"
-SCRIPT_VERSION  = "2"
+SCRIPT_VERSION  = "3"
 SCRIPT_LICENSE  = "GPL3"
 SCRIPT_DESC     = "Send push notifications from weechat"
 
@@ -46,6 +46,7 @@ local p_config = {
 	ignore_buffers = 'Comma separated list of buffers to ignore',
 	ignore_messages = 'Comma separated list of message parts that will ignore the message',
 	only_when_away = 'Only send messages when away. String with values either on or off',
+	idle_timeout = 'Start sending messages after N seconds of inactivity',
 }
 local p_config_defaults = {
     token   = '',
@@ -54,9 +55,8 @@ local p_config_defaults = {
 	ignore_buffers = '',
 	ignore_messages = '',
 	only_when_away = 'on',
+	idle_timeout = 0,
 }
-
-p_hook_process = nil
 
 -- printf function
 function printf(buffer, fmt, ...)
@@ -64,9 +64,6 @@ function printf(buffer, fmt, ...)
 end
 
 function p_process_cb(data, command, rc, stdout, stderr)
-    if tonumber(rc) >= 0 then
-        p_hook_process = nil
-    end
 	return w.WEECHAT_RC_OK
 end
 
@@ -77,6 +74,30 @@ function get_nick(s)
     s = s:gsub(suffix..'$', '')
     s = s:gsub('^[~%+@!]*', '')
     return s
+end
+
+local outstanding_messages = {}
+local last_inactivity = 0
+local check_interval = 10
+
+function pushover_send_queued_messages(data, remaining_calls)
+   local timeout = tonumber(w.config_get_plugin('idle_timeout'))
+   local inactivity = tonumber(w.info_get("inactivity", ""))
+   if inactivity < last_inactivity + check_interval then
+      -- either clock goes backwards or you've done something, clear the queue
+      outstanding_messages = {}
+   end      
+   if timeout > 0 then
+      if timeout < inactivity then
+	 local val = table.remove(outstanding_messages)
+	 while val do
+	    w.hook_process_hashtable(value.url, value.options, 10 * 1000, 'p_process_cb', '')
+	    val = table.remove(outstanding_messages)
+	 end
+      end
+   end
+   last_inactivity = inactivity
+   return w.WEECHAT_RC_OK
 end
 
 function pushover_check(data, buffer, time, tags, display, hilight, prefix, msg)
@@ -115,7 +136,17 @@ function pushover_check(data, buffer, time, tags, display, hilight, prefix, msg)
             postfields = 'token='..token..'&user='..user..'&title='..channel..'&message='..message
         }
         local url = 'https://api.pushover.net/1/messages.json'
-        p_hook_process = w.hook_process_hashtable('url:'..url, options, 10 * 1000, 'p_process_cb', '')
+
+	local timeout = tonumber(w.config_get_plugin('idle_timeout'))
+	if timeout > 0 then
+	   if timeout > tonumber(w.info_get("inactivity", "")) then
+	      table.insert(outstanding_messages, { ["url"] = 'url:'..url, ["options"] = options })
+	      return w.WEECHAT_RC_OK
+	   end
+	end
+	w.print("", "would send")
+   --    p_hook_process = w.hook_process_hashtable('url:'..url, options, 10 * 1000, 'p_process_cb', '')
+
     end
 	return w.WEECHAT_RC_OK
 end
@@ -138,6 +169,7 @@ function p_init()
 		end
 		-- Hook on every message printed
 		w.hook_print('', '', '', 1, 'pushover_check', '')
+		w.hook_timer(1000*check_interval, 0, 0, 'pushover_send_queued_messages', '')
 	end
 end
 
