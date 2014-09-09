@@ -86,14 +86,14 @@ function pushover_send_queued_messages(data, remaining_calls)
    if inactivity < last_inactivity + check_interval then
       -- either clock goes backwards or you've done something, clear the queue
       outstanding_messages = {}
-   end      
+   end
    if timeout > 0 then
       if timeout < inactivity then
-     local val = table.remove(outstanding_messages)
-     while val do
-        w.hook_process_hashtable(value.url, value.options, 10 * 1000, 'p_process_cb', '')
-        val = table.remove(outstanding_messages)
-     end
+         local val = table.remove(outstanding_messages)
+         while val do
+            w.hook_process_hashtable(value.url, value.options, 10 * 1000, 'p_process_cb', '')
+            val = table.remove(outstanding_messages)
+         end
       end
    end
    last_inactivity = inactivity
@@ -137,15 +137,14 @@ function pushover_check(data, buffer, time, tags, display, hilight, prefix, msg)
         }
         local url = 'https://api.pushover.net/1/messages.json'
 
-    local timeout = tonumber(w.config_get_plugin('idle_timeout'))
-    if timeout > 0 then
-       if timeout > tonumber(w.info_get("inactivity", "")) then
-          table.insert(outstanding_messages, { ["url"] = 'url:'..url, ["options"] = options })
-          return w.WEECHAT_RC_OK
-       end
-    end
-    w.print("", "would send")
-   --    p_hook_process = w.hook_process_hashtable('url:'..url, options, 10 * 1000, 'p_process_cb', '')
+        local timeout = tonumber(w.config_get_plugin('idle_timeout'))
+        if timeout > 0 then
+           if timeout > tonumber(w.info_get("inactivity", "")) then
+              table.insert(outstanding_messages, { ["url"] = 'url:'..url, ["options"] = options })
+              return w.WEECHAT_RC_OK
+           end
+        end
+        p_hook_process = w.hook_process_hashtable('url:'..url, options, 10 * 1000, 'p_process_cb', '')
 
     end
     return w.WEECHAT_RC_OK
