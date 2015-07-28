@@ -21,6 +21,10 @@
 #
 #
 # History:
+# 2015-07-28, xt
+#   version 21: fix problems with nicks with commas in them
+# 2015-04-19, xt
+#   version 20: fix ignore of nicks in URLs
 # 2015-04-18, xt
 #   version 19: new option ignore nicks in URLs
 # 2015-03-03, xt
@@ -71,7 +75,7 @@ w = weechat
 
 SCRIPT_NAME    = "colorize_nicks"
 SCRIPT_AUTHOR  = "xt <xt@bash.no>"
-SCRIPT_VERSION = "19"
+SCRIPT_VERSION = "21"
 SCRIPT_LICENSE = "GPL"
 SCRIPT_DESC    = "Use the weechat nick colors in the chat area"
 
@@ -132,7 +136,7 @@ def colorize_config_init():
         0, "on", "on", 0, "", "", "", "", "", "")
     colorize_config_option["ignore_nicks_in_urls"] = weechat.config_new_option(
         colorize_config_file, section_look, "ignore_nicks_in_urls",
-        "boolean", "If on, don't colorize nicksinside URLs", "", 0,
+        "boolean", "If on, don't colorize nicks inside URLs", "", 0,
         0, "off", "off", 0, "", "", "", "", "", "")
 
 def colorize_config_read():
@@ -180,7 +184,6 @@ def colorize_cb(data, modifier, modifier_data, line):
         # Check that nick is not ignored and longer than minimum length
         if len(nick) < min_length or nick in ignore_nicks:
             continue
-
 
         # Check that nick is in the dictionary colored_nicks
         if nick in colored_nicks[buffer]:
@@ -286,7 +289,10 @@ def add_nick(data, signal, type_data):
     ''' Add nick to dict of colored nicks '''
     global colored_nicks
 
-    pointer, nick = type_data.split(',')
+    # Nicks can have , in them in some protocols
+    splitted = type_data.split(',')
+    pointer = splitted[0]
+    nick = ",".join(splitted[1:])
     if pointer not in colored_nicks:
         colored_nicks[pointer] = {}
 
@@ -301,7 +307,10 @@ def remove_nick(data, signal, type_data):
     ''' Remove nick from dict with colored nicks '''
     global colored_nicks
 
-    pointer, nick = type_data.split(',')
+    # Nicks can have , in them in some protocols
+    splitted = type_data.split(',')
+    pointer = splitted[0]
+    nick = ",".join(splitted[1:])
 
     if pointer in colored_nicks and nick in colored_nicks[pointer]:
         del colored_nicks[pointer][nick]
